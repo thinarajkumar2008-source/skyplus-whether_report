@@ -96,10 +96,18 @@
       <button id="bannerConfigLink" class="banner-link">Change API / Key</button>
     </div>
 
-    <!-- Loading State -->
+    <!-- Dynamic Weather-Themed Loading State -->
     <div class="loading-state hidden" id="loadingState">
-      <div class="spinner"></div>
-      <p>Fetching latest atmospheric data...</p>
+      <div class="weather-loader-wrapper" id="weatherLoaderWrapper">
+        <div class="weather-loader-symbol" id="weatherLoaderSymbol">
+          <!-- Weather-adaptive animated SVG injected via JS -->
+        </div>
+        <div class="weather-loader-halo" id="weatherLoaderHalo"></div>
+      </div>
+      <div class="loading-text-container">
+        <p id="loadingTitle" class="loading-title">Fetching atmospheric data...</p>
+        <span id="loadingSubtext" class="loading-subtext">Calibrating meteorological sensors...</span>
+      </div>
     </div>
 
     <!-- Error State -->

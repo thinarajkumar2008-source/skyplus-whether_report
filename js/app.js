@@ -53,6 +53,11 @@
     apiStatusText: document.getElementById('apiStatusText'),
     bannerConfigLink: document.getElementById('bannerConfigLink'),
     loadingState: document.getElementById('loadingState'),
+    weatherLoaderWrapper: document.getElementById('weatherLoaderWrapper'),
+    weatherLoaderSymbol: document.getElementById('weatherLoaderSymbol'),
+    weatherLoaderHalo: document.getElementById('weatherLoaderHalo'),
+    loadingTitle: document.getElementById('loadingTitle'),
+    loadingSubtext: document.getElementById('loadingSubtext'),
     errorBanner: document.getElementById('errorBanner'),
     errorMessage: document.getElementById('errorMessage'),
     retryBtn: document.getElementById('retryBtn'),
@@ -171,8 +176,9 @@
   /**
    * Fetch and display weather data
    */
-  async function loadWeatherData(loc) {
-    showLoading(true);
+  async function loadWeatherData(loc, weatherHint) {
+    const hint = weatherHint || loc.condition || loc.icon || loc.category;
+    showLoading(true, hint);
     hideError();
 
     try {
@@ -563,7 +569,12 @@
       const chip = e.target.closest('.city-chip');
       if (chip) {
         const cityName = chip.dataset.city;
-        searchAndSelectFirst(cityName);
+        let hint = null;
+        if (typeof WorldWeather !== 'undefined') {
+          const match = WorldWeather.getAll().find(c => cityName.toLowerCase().includes(c.city.toLowerCase()));
+          if (match) hint = match.condition || match.icon;
+        }
+        searchAndSelectFirst(cityName, hint);
       }
     });
 
@@ -705,7 +716,7 @@
         li.addEventListener('click', () => {
           elements.searchInput.value = `${loc.name}, ${loc.countryCode || loc.country}`;
           hideSuggestions();
-          loadWeatherData(loc);
+          loadWeatherData(loc, loc.condition || loc.icon);
         });
 
         elements.suggestionsList.appendChild(li);
@@ -725,14 +736,14 @@
   /**
    * Search and automatically select the top matching result
    */
-  async function searchAndSelectFirst(query) {
-    showLoading(true);
+  async function searchAndSelectFirst(query, weatherHint) {
+    showLoading(true, weatherHint);
     try {
       const results = await WeatherAPI.searchLocations(query);
       if (results && results.length > 0) {
         const topResult = results[0];
         elements.searchInput.value = `${topResult.name}, ${topResult.countryCode || topResult.country}`;
-        await loadWeatherData(topResult);
+        await loadWeatherData(topResult, weatherHint);
       } else {
         showError(`No locations found for "${query}". Please check spelling.`);
       }
@@ -881,10 +892,102 @@
     elements.forecastProviderPill.textContent = WeatherAPI.getProvider() === 'openweathermap' ? 'OWM Forecast' : 'Open-Meteo 7-Day';
   }
 
-  function showLoading(show) {
-    elements.loadingState.classList.toggle('hidden', !show);
-    elements.mainDashboard.style.opacity = show ? '0.4' : '1';
-    elements.mainDashboard.style.pointerEvents = show ? 'none' : 'auto';
+  function showLoading(show, weatherHint) {
+    if (show) {
+      let hint = weatherHint;
+      if (!hint && state.weatherData && state.weatherData.current) {
+        hint = state.weatherData.current.category || state.weatherData.current.condition || state.weatherData.current.icon;
+      }
+
+      const category = resolveLoaderCategory(hint);
+
+      // Inject the weather-adaptive dynamic SVG icon (e.g. rotating Sun, falling Raindrops, Snowflake, etc.)
+      if (elements.weatherLoaderSymbol && typeof WeatherIcons !== 'undefined' && WeatherIcons.getLoader) {
+        elements.weatherLoaderSymbol.innerHTML = WeatherIcons.getLoader(category);
+      }
+
+      // Update the glowing ambient halo theme
+      if (elements.weatherLoaderWrapper) {
+        elements.weatherLoaderWrapper.className = `weather-loader-wrapper theme-${category}`;
+      }
+
+      // Update descriptive atmospheric status text
+      const meta = getLoaderMeta(category);
+      if (elements.loadingTitle) elements.loadingTitle.textContent = meta.title;
+      if (elements.loadingSubtext) elements.loadingSubtext.textContent = meta.sub;
+
+      elements.loadingState.classList.remove('hidden');
+      elements.mainDashboard.style.opacity = '0.35';
+      elements.mainDashboard.style.pointerEvents = 'none';
+    } else {
+      elements.loadingState.classList.add('hidden');
+      elements.mainDashboard.style.opacity = '1';
+      elements.mainDashboard.style.pointerEvents = 'auto';
+    }
+  }
+
+  function resolveLoaderCategory(hint) {
+    if (!hint) return 'sunny';
+    const str = String(hint).toLowerCase();
+    if (str.includes('rain') || str.includes('drizzle') || str.includes('shower')) return 'rainy';
+    if (str.includes('storm') || str.includes('thunder') || str.includes('lightning')) return 'stormy';
+    if (str.includes('snow') || str.includes('sleet') || str.includes('hail') || str.includes('freez')) return 'snowy';
+    if (str.includes('fog') || str.includes('mist') || str.includes('rime') || str.includes('haze')) return 'foggy';
+    if (str.includes('night') || str.includes('moon')) return 'night';
+    if (str.includes('wind') || str.includes('breeze')) return 'windy';
+    if (str.includes('sun') || str.includes('clear')) return 'sunny';
+    if (str.includes('cloud') || str.includes('overcast')) return 'cloudy';
+    return 'sunny';
+  }
+
+  function getLoaderMeta(category) {
+    switch (category) {
+      case 'sunny':
+        return {
+          title: 'Solar Telemetry & Clear Skies...',
+          sub: 'Rotating solar sensors & computing UV radiation'
+        };
+      case 'rainy':
+        return {
+          title: 'Tracking Rain & Precipitation...',
+          sub: 'Measuring precipitation probability & falling droplets'
+        };
+      case 'stormy':
+        return {
+          title: 'Monitoring Storm Cells & Lightning...',
+          sub: 'Tracking barometric drop & electric discharges'
+        };
+      case 'snowy':
+        return {
+          title: 'Analyzing Snowfall & Freezing Levels...',
+          sub: 'Calibrating crystalline temperature boundaries'
+        };
+      case 'cloudy':
+        return {
+          title: 'Scanning Cloud Formations & Overcast...',
+          sub: 'Evaluating cloud cover density & wind vectors'
+        };
+      case 'foggy':
+        return {
+          title: 'Measuring Mist & Fog Density...',
+          sub: 'Calibrating horizontal visibility distance'
+        };
+      case 'night':
+        return {
+          title: 'Observing Nocturnal Atmospheric Trends...',
+          sub: 'Synchronizing nighttime temperature curve'
+        };
+      case 'windy':
+        return {
+          title: 'Measuring Wind Velocity & Direction...',
+          sub: 'Calculating cardinal compass bearings'
+        };
+      default:
+        return {
+          title: 'Fetching Atmospheric Telemetry...',
+          sub: 'Synchronizing real-time global weather stream'
+        };
+    }
   }
 
   function showError(msg) {
@@ -985,7 +1088,7 @@
         };
         elements.searchInput.value = `${c.city}, ${c.country}`;
         window.scrollTo({ top: 0, behavior: 'smooth' });
-        loadWeatherData(location);
+        loadWeatherData(location, c.condition || c.icon);
       });
 
       card.addEventListener('keydown', (e) => {

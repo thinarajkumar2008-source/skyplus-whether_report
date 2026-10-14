@@ -479,17 +479,313 @@ body {
   gap: 16px;
 }
 
-.spinner {
-  width: 44px;
-  height: 44px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--accent-cyan);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+/* Weather-Adaptive Dynamic Loading State */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  color: var(--text-secondary);
+  gap: 16px;
+  min-height: 180px;
 }
 
-@keyframes spin {
+.weather-loader-wrapper {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weather-loader-symbol {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.loader-weather-svg {
+  width: 72px;
+  height: 72px;
+  overflow: visible;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.4));
+}
+
+.weather-loader-halo {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.3) 0%, rgba(56, 189, 248, 0) 70%);
+  z-index: 1;
+  pointer-events: none;
+  animation: pulseHalo 2s ease-in-out infinite alternate;
+  transition: background 0.4s ease;
+}
+
+/* Category-specific Halos */
+.weather-loader-wrapper.theme-sunny .weather-loader-halo {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.4) 0%, rgba(245, 158, 11, 0) 70%);
+}
+.weather-loader-wrapper.theme-rainy .weather-loader-halo {
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.4) 0%, rgba(56, 189, 248, 0) 70%);
+}
+.weather-loader-wrapper.theme-stormy .weather-loader-halo {
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.45) 0%, rgba(245, 158, 11, 0.15) 50%, transparent 70%);
+}
+.weather-loader-wrapper.theme-snowy .weather-loader-halo {
+  background: radial-gradient(circle, rgba(186, 230, 253, 0.45) 0%, rgba(56, 189, 248, 0) 70%);
+}
+.weather-loader-wrapper.theme-night .weather-loader-halo {
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.35) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+.loading-text-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+
+.loading-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.loading-subtext {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* --- Animated Weather Keyframes --- */
+
+/* 1. Sunny Sun Animations */
+.loader-sun-rays {
+  animation: spinSunRays 4.5s linear infinite;
+  transform-origin: 40px 40px;
+}
+
+.loader-sun-core {
+  animation: pulseSunCore 1.8s ease-in-out infinite alternate;
+  transform-origin: 40px 40px;
+}
+
+@keyframes spinSunRays {
+  from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes pulseSunCore {
+  0% {
+    transform: scale(0.92);
+    filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.5));
+  }
+  100% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.85));
+  }
+}
+
+/* 2. Rainy Falling Raindrops Animations */
+.loader-rainy-svg .loader-cloud-body {
+  animation: cloudBob 2.2s ease-in-out infinite alternate;
+}
+
+.loader-drop {
+  animation: rainDropFall 0.85s linear infinite;
+}
+
+.loader-drop-1 {
+  animation-delay: 0s;
+}
+
+.loader-drop-2 {
+  animation-delay: 0.22s;
+}
+
+.loader-drop-3 {
+  animation-delay: 0.44s;
+}
+
+.loader-drop-4 {
+  animation-delay: 0.66s;
+}
+
+@keyframes rainDropFall {
+  0% {
+    transform: translateY(-8px);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(14px);
+    opacity: 0;
+  }
+}
+
+@keyframes cloudBob {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+/* 3. Stormy Lightning Flash */
+.loader-lightning-bolt {
+  animation: lightningStrike 1.2s ease-in-out infinite;
+  transform-origin: 40px 48px;
+}
+
+@keyframes lightningStrike {
+  0%, 100% {
+    opacity: 0.15;
+    transform: scale(0.88);
+    filter: drop-shadow(0 0 2px #eab308);
+  }
+  45% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 24px #fde047);
+  }
+  55% {
+    opacity: 0.4;
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 16px #facc15);
+  }
+  68% {
+    opacity: 0.2;
+  }
+}
+
+/* 4. Snowy Spinning Snowflake */
+.loader-snowflake-spin {
+  animation: spinSnowflake 6s linear infinite;
+  transform-origin: 40px 40px;
+}
+
+.loader-snowy-svg {
+  animation: snowDrift 2.2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 14px rgba(186, 230, 253, 0.7));
+}
+
+@keyframes spinSnowflake {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes snowDrift {
+  0% { transform: translateY(-3px) rotate(-3deg); }
+  100% { transform: translateY(3px) rotate(3deg); }
+}
+
+/* 5. Cloudy Drifting Clouds */
+.loader-cloud-front {
+  animation: cloudDriftFront 2.5s ease-in-out infinite alternate;
+}
+
+.loader-cloud-back {
+  animation: cloudDriftBack 3.2s ease-in-out infinite alternate;
+}
+
+@keyframes cloudDriftFront {
+  0% { transform: translateX(-4px); }
+  100% { transform: translateX(5px); }
+}
+
+@keyframes cloudDriftBack {
+  0% { transform: translateX(4px); }
+  100% { transform: translateX(-4px); }
+}
+
+/* 6. Foggy Drifting Mist */
+.loader-fog-bar-1 {
+  animation: fogSlide 1.8s ease-in-out infinite alternate;
+}
+.loader-fog-bar-2 {
+  animation: fogSlide 2.2s ease-in-out infinite alternate 0.3s;
+}
+.loader-fog-bar-3 {
+  animation: fogSlide 2s ease-in-out infinite alternate 0.6s;
+}
+
+@keyframes fogSlide {
+  0% { transform: translateX(-6px); opacity: 0.4; }
+  100% { transform: translateX(6px); opacity: 0.95; }
+}
+
+/* 7. Night Moon Sway & Star Twinkle */
+.loader-moon-body {
+  animation: moonSway 3.2s ease-in-out infinite alternate;
+  transform-origin: 40px 40px;
+}
+
+.loader-star-1 {
+  animation: starTwinkle 1.4s ease-in-out infinite alternate;
+}
+
+.loader-star-2 {
+  animation: starTwinkle 1.8s ease-in-out infinite alternate 0.4s;
+}
+
+@keyframes moonSway {
+  0% {
+    transform: rotate(-6deg);
+    filter: drop-shadow(0 0 6px rgba(226, 232, 240, 0.4));
+  }
+  100% {
+    transform: rotate(6deg);
+    filter: drop-shadow(0 0 16px rgba(186, 230, 253, 0.75));
+  }
+}
+
+@keyframes starTwinkle {
+  0% { transform: scale(0.4); opacity: 0.2; transform-origin: center; }
+  50% { transform: scale(1.25); opacity: 1; transform-origin: center; filter: drop-shadow(0 0 8px #fde047); }
+  100% { transform: scale(0.6); opacity: 0.35; transform-origin: center; }
+}
+
+/* 8. Windy Flow */
+.loader-wind-1 { animation: windFlow 1.4s ease-in-out infinite; }
+.loader-wind-2 { animation: windFlow 1.4s ease-in-out infinite 0.25s; }
+.loader-wind-3 { animation: windFlow 1.4s ease-in-out infinite 0.5s; }
+
+@keyframes windFlow {
+  0% { transform: translateX(-8px); opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { transform: translateX(8px); opacity: 0.2; }
+}
+
+/* 9. Default Sun-Cloud */
+.loader-sun-rotate-small {
+  animation: spinSunSmall 4s linear infinite;
+  transform-origin: 34px 28px;
+}
+
+@keyframes spinSunSmall {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseHalo {
+  0% { transform: scale(0.85); opacity: 0.5; }
+  100% { transform: scale(1.15); opacity: 0.95; }
 }
 
 .error-banner {

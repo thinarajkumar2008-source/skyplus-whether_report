@@ -204,9 +204,120 @@ const WeatherIcons = (function () {
       </svg>`
   };
 
+  // Weather-Adaptive Dynamic Animated Loader Icons
+  const loaderIcons = {
+    'sunny': `
+      <svg class="loader-weather-svg loader-sunny-svg" viewBox="0 0 80 80" fill="none">
+        <g class="loader-sun-rays">
+          <line x1="40" y1="8" x2="40" y2="16" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="40" y1="64" x2="40" y2="72" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="8" y1="40" x2="16" y2="40" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="64" y1="40" x2="72" y2="40" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="17.4" y1="17.4" x2="23" y2="23" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="57" y1="57" x2="62.6" y2="62.6" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="17.4" y1="62.6" x2="23" y2="57" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+          <line x1="57" y1="23" x2="62.6" y2="17.4" stroke="#F59E0B" stroke-width="4" stroke-linecap="round"/>
+        </g>
+        <circle class="loader-sun-core" cx="40" cy="40" r="18" fill="url(#sunLoaderGrad)" stroke="#F59E0B" stroke-width="3"/>
+        <defs>
+          <radialGradient id="sunLoaderGrad" cx="35%" cy="35%" r="65%">
+            <stop offset="0%" stop-color="#FDE047"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </radialGradient>
+        </defs>
+      </svg>`,
+
+    'rainy': `
+      <svg class="loader-weather-svg loader-rainy-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-cloud-body" d="M58 40H22C15.4 40 10 34.6 10 28C10 21.9 14.5 16.9 20.4 16.1C21.5 5.3 30.6 -3 42 -3C54.2 -3 64.2 7 64.2 19.2C64.2 20.2 64.1 21.2 64 22.2C67.6 24.1 70 27.7 70 32C70 36.4 66.4 40 62 40H58Z" fill="#334155" fill-opacity="0.5" stroke="#94A3B8" stroke-width="3"/>
+        <line class="loader-drop loader-drop-1" x1="22" y1="46" x2="18" y2="60" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+        <line class="loader-drop loader-drop-2" x1="34" y1="46" x2="30" y2="60" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+        <line class="loader-drop loader-drop-3" x1="46" y1="46" x2="42" y2="60" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+        <line class="loader-drop loader-drop-4" x1="58" y1="46" x2="54" y2="60" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>`,
+
+    'stormy': `
+      <svg class="loader-weather-svg loader-stormy-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-cloud-body" d="M58 38H22C15.4 38 10 32.6 10 26C10 19.9 14.5 14.9 20.4 14.1C21.5 3.3 30.6 -5 42 -5C54.2 -5 64.2 5 64.2 17.2C67.6 19.1 70 22.7 70 27C70 31.4 66.4 35 62 35H58Z" fill="#1e1e38" fill-opacity="0.65" stroke="#64748B" stroke-width="3"/>
+        <line class="loader-drop loader-drop-1" x1="18" y1="44" x2="14" y2="58" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+        <polygon class="loader-lightning-bolt" points="40,36 28,50 37,50 33,68 53,46 43,46" fill="#FACC15" stroke="#EAB308" stroke-width="1.5"/>
+        <line class="loader-drop loader-drop-3" x1="60" y1="44" x2="56" y2="58" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+      </svg>`,
+
+    'snowy': `
+      <svg class="loader-weather-svg loader-snowy-svg" viewBox="0 0 80 80" fill="none">
+        <g class="loader-snowflake-spin">
+          <line x1="40" y1="10" x2="40" y2="70" stroke="#BAE6FD" stroke-width="4" stroke-linecap="round"/>
+          <line x1="10" y1="40" x2="70" y2="40" stroke="#BAE6FD" stroke-width="4" stroke-linecap="round"/>
+          <line x1="19" y1="19" x2="61" y2="61" stroke="#BAE6FD" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="19" y1="61" x2="61" y2="19" stroke="#BAE6FD" stroke-width="3.5" stroke-linecap="round"/>
+          <polyline points="32,18 40,26 48,18" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+          <polyline points="32,62 40,54 48,62" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+          <polyline points="18,32 26,40 18,48" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+          <polyline points="62,32 54,40 62,48" stroke="#38BDF8" stroke-width="3" stroke-linecap="round"/>
+        </g>
+      </svg>`,
+
+    'cloudy': `
+      <svg class="loader-weather-svg loader-cloudy-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-cloud-back" d="M62 42H34C28.5 42 24 37.5 24 32C24 27 27.7 22.8 32.6 22.1C33.5 13.1 41.1 6 50.5 6C60.7 6 69 14.3 69 24.5C72 26.1 74 29.1 74 32.6C74 37.8 68.6 42 62 42Z" fill="#475569" fill-opacity="0.3" stroke="#64748B" stroke-width="2.5"/>
+        <path class="loader-cloud-front" d="M50 56H18C12.5 56 8 51.5 8 46C8 41 11.7 36.8 16.6 36.1C17.5 27.1 25.1 20 34.5 20C44.7 20 53 28.3 53 38.5C56 40.1 58 43.1 58 46.6C58 51.8 54.4 56 50 56Z" fill="#94A3B8" fill-opacity="0.35" stroke="#CBD5E1" stroke-width="3"/>
+      </svg>`,
+
+    'night': `
+      <svg class="loader-weather-svg loader-night-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-moon-body" d="M52 56C36.5 56 24 43.5 24 28C24 23.9 24.9 20 26.4 16.5C18.4 21.4 13 30.2 13 40.3C13 55.4 25.2 67.7 40.3 67.7C50.4 67.7 59.2 62.3 64.1 54.3C60.6 55.8 56.4 56 52 56Z" fill="#E2E8F0" stroke="#94A3B8" stroke-width="3"/>
+        <polygon class="loader-star loader-star-1" points="58,16 60,21 65,22 61,26 62,31 58,28 54,31 55,26 51,22 56,21" fill="#FDE047"/>
+        <polygon class="loader-star loader-star-2" points="36,12 37,15 40,16 38,19 39,22 36,20 33,22 34,19 32,16 35,15" fill="#FDE047"/>
+      </svg>`,
+
+    'foggy': `
+      <svg class="loader-weather-svg loader-foggy-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-cloud-body" d="M58 34H22C15.4 34 10 28.6 10 22C10 15.9 14.5 10.9 20.4 10.1C21.5 -0.7 30.6 -9 42 -9C54.2 -9 64.2 1 64.2 13.2C67.6 15.1 70 18.7 70 23C70 29 64.8 34 58 34Z" fill="#475569" fill-opacity="0.25" stroke="#94A3B8" stroke-width="2.5"/>
+        <line class="loader-fog-bar-1" x1="14" y1="44" x2="66" y2="44" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round"/>
+        <line class="loader-fog-bar-2" x1="20" y1="52" x2="60" y2="52" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round"/>
+        <line class="loader-fog-bar-3" x1="26" y1="60" x2="54" y2="60" stroke="#94A3B8" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>`,
+
+    'windy': `
+      <svg class="loader-weather-svg loader-windy-svg" viewBox="0 0 80 80" fill="none">
+        <path class="loader-wind-line loader-wind-1" d="M14 26H50C54.4 26 58 22.4 58 18C58 13.6 54.4 10 50 10C45.6 10 42 13.6 42 18" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+        <path class="loader-wind-line loader-wind-2" d="M10 40H60C64.4 40 68 43.6 68 48C68 52.4 64.4 56 60 56C55.6 56 52 52.4 52 48" stroke="#38BDF8" stroke-width="3.5" stroke-linecap="round"/>
+        <path class="loader-wind-line loader-wind-3" d="M18 54H42C45.3 54 48 56.7 48 60C48 63.3 45.3 66 42 66C38.7 66 36 63.3 36 60" stroke="#7DD3FC" stroke-width="3.5" stroke-linecap="round"/>
+      </svg>`,
+
+    'default': `
+      <svg class="loader-weather-svg loader-suncloud-svg" viewBox="0 0 80 80" fill="none">
+        <g class="loader-sun-rotate-small">
+          <circle cx="34" cy="28" r="14" fill="#FBBF24" stroke="#F59E0B" stroke-width="2.5"/>
+          <line x1="34" y1="8" x2="34" y2="12" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+          <line x1="14" y1="28" x2="18" y2="28" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+          <line x1="20" y1="14" x2="23" y2="17" stroke="#F59E0B" stroke-width="3" stroke-linecap="round"/>
+        </g>
+        <path class="loader-cloud-front" d="M60 58H26C20 58 15 53 15 47C15 41.5 19 37 24.5 36.3C26 26.5 34.5 19 44.5 19C55.5 19 64.5 28 64.5 39C67.5 40.5 70 43.5 70 47.5C70 53.3 65.5 58 60 58Z" fill="#94A3B8" fill-opacity="0.35" stroke="#E2E8F0" stroke-width="3"/>
+      </svg>`
+  };
+
   function get(name) {
     return icons[name] || icons['sun-cloud'] || '';
   }
 
-  return { get, icons };
+  function getLoader(categoryOrName) {
+    if (!categoryOrName) return loaderIcons['default'];
+    const key = String(categoryOrName).toLowerCase();
+
+    if (key.includes('rain') || key.includes('drizzle') || key.includes('shower')) return loaderIcons['rainy'];
+    if (key.includes('storm') || key.includes('thunder') || key.includes('lightning')) return loaderIcons['stormy'];
+    if (key.includes('snow') || key.includes('sleet') || key.includes('hail') || key.includes('freez')) return loaderIcons['snowy'];
+    if (key.includes('fog') || key.includes('mist') || key.includes('rime') || key.includes('haze')) return loaderIcons['foggy'];
+    if (key.includes('night') || key.includes('moon')) return loaderIcons['night'];
+    if (key.includes('wind') || key.includes('breeze')) return loaderIcons['windy'];
+    if (key.includes('sun') || key.includes('clear')) return loaderIcons['sunny'];
+    if (key.includes('cloud') || key.includes('overcast')) return loaderIcons['cloudy'];
+
+    return loaderIcons[key] || loaderIcons['default'];
+  }
+
+  return { get, getLoader, icons, loaderIcons };
 })();
+
