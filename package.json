@@ -1,0 +1,12 @@
+{
+  "name": "weather-app",
+  "version": "1.0.0",
+  "description": "SkyPulse Real-Time Weather & Forecast Web Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["weather", "forecast", "open-meteo", "openweathermap"],
+  "author": "",
+  "license": "MIT"
+}

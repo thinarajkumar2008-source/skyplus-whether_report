@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SkyPulse | Real-Time Weather & Forecast</title>
+  <meta name="description" content="Clean, responsive real-time weather and 7-day forecast web application.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="theme-sunny">
+
+  <!-- Background Ambient Glow & Particles -->
+  <div class="ambient-glow" id="ambientGlow"></div>
+  <div class="weather-effects" id="weatherEffects"></div>
+
+  <div class="app-container">
+    
+    <!-- Top Navigation & Controls -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon" id="brandIcon">
+          <!-- Animated sun/cloud SVG will be injected -->
+        </div>
+        <div>
+          <h1 class="brand-title">SkyPulse</h1>
+          <p class="brand-subtitle">Weather & Forecast</p>
+        </div>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="search-wrapper">
+        <div class="search-box">
+          <span class="search-icon" id="searchIcon"></span>
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Search city, region, or country..." 
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button id="clearSearchBtn" class="clear-btn hidden" aria-label="Clear search">&times;</button>
+          <button id="geoBtn" class="geo-btn" title="Use current location">
+            <span id="geoIcon"></span>
+          </button>
+        </div>
+
+        <!-- Autocomplete Suggestions Dropdown -->
+        <div class="suggestions-dropdown hidden" id="suggestionsDropdown">
+          <ul id="suggestionsList"></ul>
+        </div>
+      </div>
+
+      <!-- Unit Switcher & API Settings -->
+      <div class="header-actions">
+        <!-- Celsius / Fahrenheit Toggle -->
+        <div class="unit-toggle" id="unitToggle">
+          <button class="unit-btn active" data-unit="C">°C</button>
+          <button class="unit-btn" data-unit="F">°F</button>
+        </div>
+
+        <!-- 100 Countries Hub Button -->
+        <button id="worldHubNavBtn" class="action-btn world-nav-btn" title="View 100 Countries Weather Report">
+          <span class="world-btn-icon">🌍</span>
+          <span class="btn-text">100 Countries</span>
+          <span class="badge-count">100</span>
+        </button>
+
+        <!-- Settings Button -->
+        <button id="settingsBtn" class="action-btn" title="API Settings & Config">
+          <span id="settingsIcon"></span>
+          <span class="btn-text">API Setup</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Quick City Pills -->
+    <div class="quick-cities-bar">
+      <span class="quick-label">Popular:</span>
+      <div class="chips-container" id="quickChips">
+        <button class="city-chip" data-city="London, UK">London</button>
+        <button class="city-chip" data-city="New York, USA">New York</button>
+        <button class="city-chip" data-city="Tokyo, Japan">Tokyo</button>
+        <button class="city-chip" data-city="Paris, France">Paris</button>
+        <button class="city-chip" data-city="Sydney, Australia">Sydney</button>
+        <button class="city-chip" data-city="Dubai, UAE">Dubai</button>
+      </div>
+    </div>
+
+    <!-- Active API Notice Banner -->
+    <div class="api-status-banner" id="apiStatusBanner">
+      <span class="status-dot"></span>
+      <span id="apiStatusText">Connected to Open-Meteo Global Weather API</span>
+      <button id="bannerConfigLink" class="banner-link">Change API / Key</button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state hidden" id="loadingState">
+      <div class="spinner"></div>
+      <p>Fetching latest atmospheric data...</p>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-banner hidden" id="errorBanner">
+      <span class="error-icon">⚠️</span>
+      <span id="errorMessage">Unable to fetch weather data. Please try another city.</span>
+      <button id="retryBtn" class="retry-btn">Retry</button>
+    </div>
+
+    <!-- Main Weather Dashboard -->
+    <main class="dashboard-grid" id="mainDashboard">
+      
+      <!-- Left Column / Hero Overview -->
+      <section class="overview-section">
+        
+        <!-- Hero Weather Card -->
+        <div class="card hero-card">
+          <div class="hero-top">
+            <div class="location-details">
+              <div class="location-pin">
+                <span id="pinIcon"></span>
+                <h2 id="cityName" class="city-title">London</h2>
+              </div>
+              <p id="locationSub" class="location-sub">United Kingdom</p>
+              <p id="localTime" class="local-time">Monday, Oct 12 • 14:30</p>
+            </div>
+            <div class="weather-badge" id="weatherBadge">
+              <span id="badgeCondition">Partly Cloudy</span>
+            </div>
+          </div>
+
+          <div class="hero-center">
+            <div class="hero-icon-container" id="heroIcon">
+              <!-- SVG icon -->
+            </div>
+            <div class="temp-display">
+              <span id="currentTemp" class="current-temp">18</span>
+              <span class="temp-unit" id="displayUnit">°C</span>
+            </div>
+          </div>
+
+          <div class="hero-footer">
+            <div class="hero-stat">
+              <span class="stat-label">Feels like</span>
+              <span class="stat-value" id="feelsLike">17°</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="hero-stat">
+              <span class="stat-label">High / Low</span>
+              <span class="stat-value"><span id="tempMax">20°</span> / <span id="tempMin">12°</span></span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="hero-stat">
+              <span class="stat-label">Condition</span>
+              <span class="stat-value" id="conditionText">Partly Cloudy</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 24-Hour Hourly Forecast -->
+        <div class="card hourly-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">Hourly Forecast</h3>
+              <p class="card-subtitle">Next 24 hours</p>
+            </div>
+            <button id="toggleGraphBtn" class="text-toggle-btn">View Curve</button>
+          </div>
+
+          <!-- Canvas / SVG Temperature Curve (Toggleable) -->
+          <div class="hourly-graph-container hidden" id="hourlyGraphContainer">
+            <canvas id="tempChart" height="110"></canvas>
+          </div>
+
+          <!-- Horizontal Hourly Cards Slider -->
+          <div class="hourly-slider" id="hourlySlider">
+            <!-- Hourly pills dynamically injected -->
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Right Column / Metrics & 7-Day Forecast -->
+      <section class="details-section">
+
+        <!-- Weather Metrics Grid -->
+        <div class="metrics-grid">
+          
+          <!-- Wind -->
+          <div class="metric-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="windIcon"></span>
+              <span class="metric-name">Wind Speed</span>
+            </div>
+            <div class="metric-value-box">
+              <span class="metric-main" id="windSpeed">15</span>
+              <span class="metric-unit" id="windUnit">km/h</span>
+            </div>
+            <div class="metric-sub" id="windDirection">Direction: 210° (SSW)</div>
+          </div>
+
+          <!-- Humidity -->
+          <div class="metric-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="humidityIcon"></span>
+              <span class="metric-name">Humidity</span>
+            </div>
+            <div class="metric-value-box">
+              <span class="metric-main" id="humidity">65</span>
+              <span class="metric-unit">%</span>
+            </div>
+            <div class="progress-bar-wrapper">
+              <div class="progress-bar" id="humidityBar" style="width: 65%;"></div>
+            </div>
+            <div class="metric-sub" id="humidityStatus">Comfortable humidity</div>
+          </div>
+
+          <!-- UV Index -->
+          <div class="metric-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="uvIcon"></span>
+              <span class="metric-name">UV Index</span>
+            </div>
+            <div class="metric-value-box">
+              <span class="metric-main" id="uvIndex">2.4</span>
+              <span class="metric-tag tag-low" id="uvBadge">Low</span>
+            </div>
+            <div class="metric-sub" id="uvAdvice">Safe for sun exposure</div>
+          </div>
+
+          <!-- Air Pressure -->
+          <div class="metric-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="pressureIcon"></span>
+              <span class="metric-name">Pressure</span>
+            </div>
+            <div class="metric-value-box">
+              <span class="metric-main" id="pressure">1014</span>
+              <span class="metric-unit">hPa</span>
+            </div>
+            <div class="metric-sub">Standard atmospheric pressure</div>
+          </div>
+
+          <!-- Visibility -->
+          <div class="metric-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="visibilityIcon"></span>
+              <span class="metric-name">Visibility</span>
+            </div>
+            <div class="metric-value-box">
+              <span class="metric-main" id="visibility">10</span>
+              <span class="metric-unit" id="visUnit">km</span>
+            </div>
+            <div class="metric-sub">Clear view distance</div>
+          </div>
+
+          <!-- Sunrise & Sunset -->
+          <div class="metric-card sun-times-card">
+            <div class="metric-top">
+              <span class="metric-icon" id="sunCycleIcon"></span>
+              <span class="metric-name">Sun Schedule</span>
+            </div>
+            <div class="sun-schedule-grid">
+              <div class="sun-row">
+                <span class="sun-row-label">Sunrise</span>
+                <span class="sun-row-time" id="sunriseTime">07:19</span>
+              </div>
+              <div class="sun-row">
+                <span class="sun-row-label">Sunset</span>
+                <span class="sun-row-time" id="sunsetTime">18:13</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 7-Day Forecast Card -->
+        <div class="card daily-card">
+          <div class="card-header">
+            <div>
+              <h3 class="card-title">7-Day Forecast</h3>
+              <p class="card-subtitle">Expected weather ahead</p>
+            </div>
+            <span class="provider-pill" id="forecastProviderPill">Open-Meteo</span>
+          </div>
+
+          <div class="daily-list" id="dailyList">
+            <!-- Daily list items dynamically populated -->
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+ 
+     <!-- 100 Countries Global Weather Section -->
+     <section class="world-section" id="worldSection">
+       <div class="world-header-row">
+         <div class="world-title-box">
+           <div class="world-title-with-badge">
+             <h2 class="world-title">🌍 100 Countries Global Weather Report</h2>
+             <span class="live-pill" id="worldLivePill">100 Nations Live</span>
+           </div>
+           <p class="world-subtitle">
+             Real-time atmospheric conditions across 100 countries worldwide. Click any country card to explore its full 24-hour timeline and 7-day extended forecast.
+           </p>
+         </div>
+         <div class="world-actions">
+           <button id="refreshWorldBtn" class="refresh-world-btn" title="Refresh live weather for all 100 countries">
+             <span class="refresh-icon" id="worldRefreshIcon">🔄</span>
+             <span class="btn-text">Sync Live 100</span>
+           </button>
+         </div>
+       </div>
+
+       <!-- Global Telemetry Stats Cards -->
+       <div class="world-stats-grid" id="worldStatsGrid">
+         <div class="world-stat-card">
+           <span class="stat-icon">🔥</span>
+           <div>
+             <span class="stat-meta">Warmest Country</span>
+             <strong class="stat-hero" id="statWarmest">--</strong>
+           </div>
+         </div>
+         <div class="world-stat-card">
+           <span class="stat-icon">❄️</span>
+           <div>
+             <span class="stat-meta">Coldest Country</span>
+             <strong class="stat-hero" id="statColdest">--</strong>
+           </div>
+         </div>
+         <div class="world-stat-card">
+           <span class="stat-icon">🌐</span>
+           <div>
+             <span class="stat-meta">Global Average Temp</span>
+             <strong class="stat-hero" id="statAverage">--</strong>
+           </div>
+         </div>
+         <div class="world-stat-card">
+           <span class="stat-icon">📊</span>
+           <div>
+             <span class="stat-meta">Countries Monitored</span>
+             <strong class="stat-hero" id="statCount">100 / 100</strong>
+           </div>
+         </div>
+       </div>
+
+       <!-- Controls & Filter Toolbar -->
+       <div class="world-toolbar">
+         <!-- Search Filter -->
+         <div class="world-search-box">
+           <span class="world-search-icon">🔍</span>
+           <input 
+             type="text" 
+             id="worldSearchInput" 
+             placeholder="Search 100 countries or capitals (e.g. India, Japan, France, Brazil, USA)..."
+             autocomplete="off"
+             spellcheck="false"
+           >
+           <button id="clearWorldSearchBtn" class="clear-btn hidden" aria-label="Clear filter">&times;</button>
+         </div>
+
+         <!-- Region Filter Pills -->
+         <div class="world-region-chips" id="worldRegionChips">
+           <button class="region-chip active" data-region="All">All (100)</button>
+           <button class="region-chip" data-region="Europe">Europe (26)</button>
+           <button class="region-chip" data-region="Asia">Asia (26)</button>
+           <button class="region-chip" data-region="Americas">Americas (22)</button>
+           <button class="region-chip" data-region="Africa">Africa (20)</button>
+           <button class="region-chip" data-region="Oceania">Oceania (6)</button>
+         </div>
+
+         <!-- Sort Options -->
+         <div class="world-sort-box">
+           <label for="worldSortSelect" class="sort-label">Sort:</label>
+           <select id="worldSortSelect" class="world-select">
+             <option value="name-asc">Country Name (A → Z)</option>
+             <option value="name-desc">Country Name (Z → A)</option>
+             <option value="temp-desc">Warmest First</option>
+             <option value="temp-asc">Coldest First</option>
+           </select>
+         </div>
+       </div>
+
+       <!-- 100 Countries Cards Grid -->
+       <div class="world-grid" id="worldGrid">
+         <!-- Populated dynamically via JavaScript -->
+       </div>
+
+       <!-- Empty Search Result -->
+       <div class="world-empty hidden" id="worldEmptyState">
+         <span class="empty-icon">🔍</span>
+         <h3>No countries match your search</h3>
+         <p>Try searching for a different country name or select "All" continents.</p>
+         <button id="resetWorldFiltersBtn" class="secondary-btn">Reset Filters</button>
+       </div>
+     </section>
+
+     <!-- App Footer -->
+     <footer class="app-footer">
+      <p>SkyPulse Weather Dashboard • Built for seamless cross-platform weather exploration.</p>
+      <p class="footer-sub">Supports both Open-Meteo (Zero Key Global API) and OpenWeatherMap.</p>
+    </footer>
+
+  </div>
+
+  <!-- API Settings Modal -->
+  <div class="modal-backdrop hidden" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title">API Connection & Provider</h3>
+        <button id="closeModalBtn" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="modal-desc">
+          Configure which weather data provider powers your application. This project supports both <strong>Open-Meteo</strong> and <strong>OpenWeatherMap</strong>.
+        </p>
+
+        <!-- Provider Choice Radio -->
+        <div class="provider-options">
+          <label class="provider-choice active" id="providerOpenMeteoOption">
+            <input type="radio" name="apiProvider" value="open-meteo" checked>
+            <div class="choice-info">
+              <div class="choice-header">
+                <strong>Open-Meteo Global API</strong>
+                <span class="badge-active">Default & Free</span>
+              </div>
+              <p class="choice-text">High precision forecast, 100% free, no API key or signup required. Works worldwide instantly.</p>
+            </div>
+          </label>
+
+          <label class="provider-choice" id="providerOwmOption">
+            <input type="radio" name="apiProvider" value="openweathermap">
+            <div class="choice-info">
+              <div class="choice-header">
+                <strong>OpenWeatherMap (2.5 API)</strong>
+                <span class="badge-optional">Key Required</span>
+              </div>
+              <p class="choice-text">Connect your personal OpenWeatherMap API key for official OWM telemetry.</p>
+            </div>
+          </label>
+        </div>
+
+        <!-- OpenWeatherMap Key Input Field -->
+        <div class="form-group" id="owmKeyGroup">
+          <label for="owmApiKeyInput" class="form-label">OpenWeatherMap API Key:</label>
+          <div class="input-with-button">
+            <input 
+              type="text" 
+              id="owmApiKeyInput" 
+              placeholder="Paste your 32-character API key here..."
+              spellcheck="false"
+            >
+            <button id="saveApiKeyBtn" class="save-key-btn">Save Key</button>
+          </div>
+          <span class="form-help">Don't have a key? Open-Meteo is always available with full real-time data!</span>
+        </div>
+
+        <!-- Connection Test Feedback -->
+        <div class="test-feedback hidden" id="apiTestFeedback"></div>
+      </div>
+
+      <div class="modal-footer">
+        <button id="applySettingsBtn" class="primary-btn">Apply & Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/icons.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/countries.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
