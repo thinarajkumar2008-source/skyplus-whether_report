@@ -109,7 +109,8 @@ const WeatherAPI = (function () {
   async function safeFetchJson(url) {
     if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
       try {
-        const proxyUrl = `/api/proxy?url=${encodeURIComponent(url)}`;
+        const base = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : '';
+        const proxyUrl = url.startsWith('/') ? `${base}${url}` : `${base}/api/proxy?url=${encodeURIComponent(url)}`;
         const res = await fetch(proxyUrl);
         if (res.ok) {
           return await res.json();
@@ -250,13 +251,34 @@ const WeatherAPI = (function () {
     return normalizeOpenMeteoData(data, locationInfo, lat, lon);
   }
 
+  const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
+  const roundOrNull = (v) => isNum(v) ? Math.round(v) : null;
+
+  /**
+   * Unified temperature formatter that guarantees genuine 0°C is strictly preserved
+   * and missing/invalid values strictly return placeholder (never coerced to 0).
+   */
+  function formatTemp(celsius, unit = 'C', placeholder = '--') {
+    if (celsius === null || celsius === undefined || celsius === '') {
+      return placeholder;
+    }
+    const num = Number(celsius);
+    if (!Number.isFinite(num)) {
+      return placeholder;
+    }
+    if (unit === 'F') {
+      return Math.round((num * 9 / 5) + 32);
+    }
+    return Math.round(num);
+  }
+
   /**
    * Normalize Open-Meteo response into standardized data schema
    */
   function normalizeOpenMeteoData(data, locationInfo, lat, lon) {
-    const current = data.current;
-    const daily = data.daily;
-    const hourly = data.hourly;
+    const current = data.current || {};
+    const daily = data.daily || {};
+    const hourly = data.hourly || {};
 
     const currentWmo = WMO_CODE_MAP[current.weather_code] || {
       condition: 'Unknown',
@@ -278,57 +300,61 @@ const WeatherAPI = (function () {
     let climate = category;
     const currentTempC = current.temperature_2m;
     const condStr = (currentWmo.condition || '').toLowerCase();
-    if (currentTempC <= 10 || category === 'snowy' || condStr.includes('snow') || condStr.includes('freez') || condStr.includes('ice') || condStr.includes('sleet')) {
+    if ((isNum(currentTempC) && currentTempC <= 10) || category === 'snowy' || condStr.includes('snow') || condStr.includes('freez') || condStr.includes('ice') || condStr.includes('sleet')) {
       climate = 'cold';
     } else if (category === 'sunny' || condStr.includes('sun') || condStr.includes('clear')) {
       climate = isDay ? 'sunny' : 'night';
     }
 
     // Process Next 24 Hours forecast
-    const nowIso = current.time;
-    let startIndex = hourly.time.findIndex(t => t >= nowIso);
+    const nowIso = current.time || new Date().toISOString();
+    let startIndex = Array.isArray(hourly.time) ? hourly.time.findIndex(t => t >= nowIso) : -1;
     if (startIndex === -1) startIndex = 0;
     
     const hourlyList = [];
-    for (let i = startIndex; i < Math.min(startIndex + 24, hourly.time.length); i++) {
-      const code = hourly.weather_code[i];
-      const hourWmo = WMO_CODE_MAP[code] || { condition: 'Clear', icon: 'sun' };
-      const hourIsDay = hourly.is_day ? hourly.is_day[i] === 1 : true;
-      let hourIcon = hourWmo.icon;
-      if (!hourIsDay && (hourIcon === 'sun' || hourIcon === 'sun-cloud')) {
-        hourIcon = 'moon';
-      }
+    if (Array.isArray(hourly.time)) {
+      for (let i = startIndex; i < Math.min(startIndex + 24, hourly.time.length); i++) {
+        const code = hourly.weather_code ? hourly.weather_code[i] : 0;
+        const hourWmo = WMO_CODE_MAP[code] || { condition: 'Clear', icon: 'sun' };
+        const hourIsDay = hourly.is_day ? hourly.is_day[i] === 1 : true;
+        let hourIcon = hourWmo.icon;
+        if (!hourIsDay && (hourIcon === 'sun' || hourIcon === 'sun-cloud')) {
+          hourIcon = 'moon';
+        }
 
-      hourlyList.push({
-        time: hourly.time[i],
-        timeFormatted: formatHour(hourly.time[i]),
-        temp: Math.round(hourly.temperature_2m[i]),
-        pop: hourly.precipitation_probability ? hourly.precipitation_probability[i] : 0,
-        condition: hourWmo.condition,
-        icon: hourIcon,
-        isDay: hourIsDay
-      });
+        hourlyList.push({
+          time: hourly.time[i],
+          timeFormatted: formatHour(hourly.time[i]),
+          temp: hourly.temperature_2m ? roundOrNull(hourly.temperature_2m[i]) : null,
+          pop: hourly.precipitation_probability ? (hourly.precipitation_probability[i] || 0) : 0,
+          condition: hourWmo.condition,
+          icon: hourIcon,
+          isDay: hourIsDay
+        });
+      }
     }
 
     // Process 7-day daily forecast
     const dailyList = [];
-    const daysCount = Math.min(7, daily.time.length);
-    for (let i = 0; i < daysCount; i++) {
-      const code = daily.weather_code[i];
-      const dayWmo = WMO_CODE_MAP[code] || { condition: 'Cloudy', icon: 'cloud-sun' };
+    if (Array.isArray(daily.time)) {
+      const daysCount = Math.min(7, daily.time.length);
+      for (let i = 0; i < daysCount; i++) {
+        const code = daily.weather_code ? daily.weather_code[i] : 0;
+        const dayWmo = WMO_CODE_MAP[code] || { condition: 'Cloudy', icon: 'cloud-sun' };
 
-      dailyList.push({
-        date: daily.time[i],
-        dayName: formatDayName(daily.time[i], i === 0),
-        condition: dayWmo.condition,
-        icon: dayWmo.icon,
-        tempMax: Math.round(daily.temperature_2m_max[i]),
-        tempMin: Math.round(daily.temperature_2m_min[i]),
-        popMax: daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : 0,
-        uvMax: daily.uv_index_max ? daily.uv_index_max[i] : 0,
-        sunrise: daily.sunrise ? daily.sunrise[i].split('T')[1] : '--:--',
-        sunset: daily.sunset ? daily.sunset[i].split('T')[1] : '--:--'
-      });
+        dailyList.push({
+          date: daily.time[i],
+          dayName: formatDayName(daily.time[i], i === 0),
+          condition: dayWmo.condition,
+          icon: dayWmo.icon,
+          tempMax: daily.temperature_2m_max ? roundOrNull(daily.temperature_2m_max[i]) : null,
+          tempMin: daily.temperature_2m_min ? roundOrNull(daily.temperature_2m_min[i]) : null,
+          popMax: daily.precipitation_probability_max ? daily.precipitation_probability_max[i] : 0,
+          uvMax: daily.uv_index_max ? daily.uv_index_max[i] : 0,
+          sunrise: daily.sunrise && daily.sunrise[i] ? daily.sunrise[i].split('T')[1] : '--:--',
+          sunset: daily.sunset && daily.sunset[i] ? daily.sunset[i].split('T')[1] : '--:--'
+        });
+      }
     }
 
     // Format Sunrise & Sunset for current day
@@ -337,31 +363,34 @@ const WeatherAPI = (function () {
 
     return {
       provider: 'Open-Meteo (Real-Time Global API)',
+      status: 'success',
       city: locationInfo.name || 'Selected Location',
       country: locationInfo.country || '',
       countryCode: locationInfo.countryCode || '',
       admin: locationInfo.admin || '',
       coordinates: { lat, lon },
       current: {
-        temp: Math.round(current.temperature_2m),
-        feelsLike: Math.round(current.apparent_temperature),
+        temp: roundOrNull(current.temperature_2m),
+        feelsLike: roundOrNull(current.apparent_temperature),
         condition: currentWmo.condition,
         icon: icon,
         category: category,
         climate: climate,
         isDay: isDay,
-        tempMax: Math.round(daily.temperature_2m_max[0]),
-        tempMin: Math.round(daily.temperature_2m_min[0]),
-        humidity: current.relative_humidity_2m,
-        windSpeed: Math.round(current.wind_speed_10m),
-        windDirection: current.wind_direction_10m,
-        pressure: Math.round(current.surface_pressure),
-        uvIndex: daily.uv_index_max ? Number(daily.uv_index_max[0].toFixed(1)) : 0,
-        visibility: 10, // default good km
-        precipitation: current.precipitation || 0,
+        tempMax: daily.temperature_2m_max ? roundOrNull(daily.temperature_2m_max[0]) : null,
+        tempMin: daily.temperature_2m_min ? roundOrNull(daily.temperature_2m_min[0]) : null,
+        humidity: isNum(current.relative_humidity_2m) ? Math.round(current.relative_humidity_2m) : null,
+        windSpeed: roundOrNull(current.wind_speed_10m),
+        windDirection: isNum(current.wind_direction_10m) ? current.wind_direction_10m : null,
+        pressure: roundOrNull(current.surface_pressure),
+        uvIndex: daily.uv_index_max && isNum(daily.uv_index_max[0]) ? Number(daily.uv_index_max[0].toFixed(1)) : null,
+        visibility: 10,
+        precipitation: isNum(current.precipitation) ? current.precipitation : 0,
         sunrise: todaySunrise,
         sunset: todaySunset,
-        time: current.time
+        time: current.time || new Date().toISOString(),
+        status: 'success',
+        lastUpdated: current.time || new Date().toISOString()
       },
       hourly: hourlyList,
       daily: dailyList
@@ -382,7 +411,10 @@ const WeatherAPI = (function () {
 
     const [currentData, forecastData] = await Promise.all([
       safeFetchJson(currentUrl),
-      safeFetchJson(forecastUrl)
+      safeFetchJson(forecastUrl).catch(e => {
+        console.warn('OWM Forecast failed:', e);
+        return { list: [] };
+      })
     ]);
 
     return normalizeOpenWeatherMapData(currentData, forecastData, locationInfo, lat, lon);
@@ -392,36 +424,43 @@ const WeatherAPI = (function () {
    * Normalize OpenWeatherMap response into standardized data schema
    */
   function normalizeOpenWeatherMapData(current, forecast, locationInfo, lat, lon) {
-    const weatherItem = current.weather[0] || {};
+    const weatherItem = (current.weather && current.weather[0]) ? current.weather[0] : {};
     const iconCode = weatherItem.icon || '01d';
     const mapped = mapOwmCondition(iconCode, weatherItem.main);
 
     // Format Sunrise / Sunset
-    const sunriseDate = new Date(current.sys.sunrise * 1000);
-    const sunsetDate = new Date(current.sys.sunset * 1000);
+    let sunriseStr = '--:--';
+    let sunsetStr = '--:--';
     const pad = n => String(n).padStart(2, '0');
-    const sunriseStr = `${pad(sunriseDate.getHours())}:${pad(sunriseDate.getMinutes())}`;
-    const sunsetStr = `${pad(sunsetDate.getHours())}:${pad(sunsetDate.getMinutes())}`;
+    if (current.sys && current.sys.sunrise) {
+      const sDate = new Date(current.sys.sunrise * 1000);
+      sunriseStr = `${pad(sDate.getHours())}:${pad(sDate.getMinutes())}`;
+    }
+    if (current.sys && current.sys.sunset) {
+      const sDate = new Date(current.sys.sunset * 1000);
+      sunsetStr = `${pad(sDate.getHours())}:${pad(sDate.getMinutes())}`;
+    }
 
     // Hourly Forecast (OpenWeatherMap provides 3-hour blocks up to 5 days)
-    const hourlyList = forecast.list.slice(0, 8).map(item => {
+    const rawList = (forecast && Array.isArray(forecast.list)) ? forecast.list : [];
+    const hourlyList = rawList.slice(0, 8).map(item => {
       const date = new Date(item.dt * 1000);
-      const m = mapOwmCondition(item.weather[0].icon, item.weather[0].main);
+      const m = mapOwmCondition(item.weather && item.weather[0] ? item.weather[0].icon : '01d', item.weather && item.weather[0] ? item.weather[0].main : '');
       return {
-        time: item.dt_txt,
+        time: item.dt_txt || date.toISOString(),
         timeFormatted: `${pad(date.getHours())}:00`,
-        temp: Math.round(item.main.temp),
+        temp: item.main ? roundOrNull(item.main.temp) : null,
         pop: Math.round((item.pop || 0) * 100),
-        condition: item.weather[0].description,
+        condition: item.weather && item.weather[0] ? item.weather[0].description : 'Clear',
         icon: m.icon,
-        isDay: item.weather[0].icon.endsWith('d')
+        isDay: item.weather && item.weather[0] ? item.weather[0].icon.endsWith('d') : true
       };
     });
 
     // Daily Forecast aggregation (Group by day)
     const dailyMap = {};
-    forecast.list.forEach(item => {
-      const dayKey = item.dt_txt.split(' ')[0];
+    rawList.forEach(item => {
+      const dayKey = item.dt_txt ? item.dt_txt.split(' ')[0] : new Date(item.dt * 1000).toISOString().split('T')[0];
       if (!dailyMap[dayKey]) {
         dailyMap[dayKey] = {
           date: dayKey,
@@ -431,25 +470,26 @@ const WeatherAPI = (function () {
           pops: []
         };
       }
-      dailyMap[dayKey].temps.push(item.main.temp);
-      dailyMap[dayKey].conditions.push(item.weather[0].description);
-      dailyMap[dayKey].icons.push(item.weather[0].icon);
+      if (item.main && isNum(item.main.temp)) dailyMap[dayKey].temps.push(item.main.temp);
+      if (item.weather && item.weather[0]) {
+        dailyMap[dayKey].conditions.push(item.weather[0].description);
+        dailyMap[dayKey].icons.push(item.weather[0].icon);
+      }
       dailyMap[dayKey].pops.push(item.pop || 0);
     });
 
     const dailyList = Object.keys(dailyMap).slice(0, 6).map((dayKey, index) => {
       const dayData = dailyMap[dayKey];
-      const maxT = Math.round(Math.max(...dayData.temps));
-      const minT = Math.round(Math.min(...dayData.temps));
-      // Pick midday icon or middle
+      const maxT = dayData.temps.length ? Math.round(Math.max(...dayData.temps)) : null;
+      const minT = dayData.temps.length ? Math.round(Math.min(...dayData.temps)) : null;
       const middleIdx = Math.floor(dayData.icons.length / 2);
-      const iconM = mapOwmCondition(dayData.icons[middleIdx], '');
-      const maxPop = Math.round(Math.max(...dayData.pops) * 100);
+      const iconM = mapOwmCondition(dayData.icons[middleIdx] || '01d', '');
+      const maxPop = Math.round(Math.max(...(dayData.pops.length ? dayData.pops : [0])) * 100);
 
       return {
         date: dayKey,
         dayName: formatDayName(dayKey, index === 0),
-        condition: dayData.conditions[middleIdx],
+        condition: dayData.conditions[middleIdx] || 'Clear',
         icon: iconM.icon,
         tempMax: maxT,
         tempMin: minT,
@@ -460,32 +500,48 @@ const WeatherAPI = (function () {
       };
     });
 
+    const main = current.main || {};
+    const wind = current.wind || {};
+    const isDay = iconCode.endsWith('d');
+    const curTemp = roundOrNull(main.temp);
+
+    let climate = mapped.category;
+    if (isNum(curTemp) && curTemp <= 10) {
+      climate = 'cold';
+    } else if (mapped.category === 'sunny') {
+      climate = isDay ? 'sunny' : 'night';
+    }
+
     return {
       provider: 'OpenWeatherMap API',
+      status: 'success',
       city: locationInfo.name || current.name || 'Selected Location',
-      country: locationInfo.country || current.sys.country || '',
-      countryCode: current.sys.country || '',
+      country: locationInfo.country || (current.sys ? current.sys.country : '') || '',
+      countryCode: (current.sys ? current.sys.country : '') || '',
       admin: locationInfo.admin || '',
       coordinates: { lat, lon },
       current: {
-        temp: Math.round(current.main.temp),
-        feelsLike: Math.round(current.main.feels_like),
+        temp: curTemp,
+        feelsLike: roundOrNull(main.feels_like),
         condition: weatherItem.description ? capitalize(weatherItem.description) : 'Clear',
         icon: mapped.icon,
         category: mapped.category,
-        isDay: iconCode.endsWith('d'),
-        tempMax: Math.round(current.main.temp_max),
-        tempMin: Math.round(current.main.temp_min),
-        humidity: current.main.humidity,
-        windSpeed: Math.round(current.wind.speed * 3.6), // m/s to km/h
-        windDirection: current.wind.deg || 0,
-        pressure: current.main.pressure,
+        climate: climate,
+        isDay: isDay,
+        tempMax: roundOrNull(main.temp_max),
+        tempMin: roundOrNull(main.temp_min),
+        humidity: isNum(main.humidity) ? main.humidity : null,
+        windSpeed: isNum(wind.speed) ? Math.round(wind.speed * 3.6) : null,
+        windDirection: isNum(wind.deg) ? wind.deg : 0,
+        pressure: roundOrNull(main.pressure),
         uvIndex: 0,
-        visibility: current.visibility ? Math.round(current.visibility / 1000) : 10,
-        precipitation: current.rain ? current.rain['1h'] || 0 : 0,
+        visibility: isNum(current.visibility) ? Math.round(current.visibility / 1000) : 10,
+        precipitation: current.rain ? (current.rain['1h'] || 0) : 0,
         sunrise: sunriseStr,
         sunset: sunsetStr,
-        time: new Date().toISOString()
+        time: new Date().toISOString(),
+        status: 'success',
+        lastUpdated: new Date().toISOString()
       },
       hourly: hourlyList,
       daily: dailyList
@@ -493,93 +549,16 @@ const WeatherAPI = (function () {
   }
 
   /**
-   * Generates realistic atmospheric telemetry when offline or behind a strict firewall
-   */
-  function generateFallbackWeatherData(lat, lon, locationInfo = {}, notice = 'Offline telemetry mode') {
-    const cityName = locationInfo.name || 'London';
-    const now = new Date();
-    const currentHour = now.getHours();
-    
-    // Estimate baseline temperature from latitude & current hour
-    const absLat = Math.abs(lat || 51.5);
-    const baseTemp = Math.round(Math.max(5, 30 - (absLat * 0.3)));
-    const hourFluctuation = Math.round(Math.sin((currentHour - 8) / 12 * Math.PI) * 4);
-    const temp = baseTemp + hourFluctuation;
-
-    const hourlyList = [];
-    for (let i = 0; i < 24; i++) {
-      const h = (currentHour + i) % 24;
-      const hFluct = Math.round(Math.sin((h - 8) / 12 * Math.PI) * 4);
-      const isDay = h >= 6 && h <= 19;
-      hourlyList.push({
-        time: `${String(h).padStart(2, '0')}:00`,
-        timeFormatted: `${String(h).padStart(2, '0')}:00`,
-        temp: baseTemp + hFluct,
-        pop: (i % 5 === 0) ? 20 : 0,
-        condition: isDay ? 'Partly Cloudy' : 'Clear Night',
-        icon: isDay ? 'cloud-sun' : 'moon',
-        isDay: isDay
-      });
-    }
-
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dailyList = [];
-    for (let d = 0; d < 7; d++) {
-      const targetDate = new Date(Date.now() + d * 86400000);
-      dailyList.push({
-        date: targetDate.toISOString().split('T')[0],
-        dayName: d === 0 ? 'Today' : dayNames[targetDate.getDay()],
-        condition: d % 3 === 0 ? 'Clear Sky' : (d % 2 === 0 ? 'Mainly Clear' : 'Partly Cloudy'),
-        icon: d % 3 === 0 ? 'sun' : 'sun-cloud',
-        tempMax: baseTemp + 4,
-        tempMin: baseTemp - 3,
-        popMax: d % 4 === 0 ? 25 : 5,
-        uvMax: 3.2,
-        sunrise: '06:45',
-        sunset: '18:30'
-      });
-    }
-
-    return {
-      provider: 'SkyPulse Telemetry (Local Engine)',
-      fallbackNotice: notice,
-      city: cityName,
-      country: locationInfo.country || 'Global',
-      countryCode: locationInfo.countryCode || '',
-      admin: locationInfo.admin || '',
-      coordinates: { lat, lon },
-      current: {
-        temp: temp,
-        feelsLike: temp - 1,
-        condition: currentHour >= 6 && currentHour <= 19 ? 'Partly Cloudy' : 'Clear Night',
-        icon: currentHour >= 6 && currentHour <= 19 ? 'cloud-sun' : 'moon',
-        category: currentHour >= 6 && currentHour <= 19 ? 'cloudy' : 'night',
-        isDay: currentHour >= 6 && currentHour <= 19,
-        tempMax: baseTemp + 4,
-        tempMin: baseTemp - 3,
-        humidity: 62,
-        windSpeed: 14,
-        windDirection: 210,
-        pressure: 1016,
-        uvIndex: 2.8,
-        visibility: 10,
-        precipitation: 0,
-        sunrise: '06:45',
-        sunset: '18:30',
-        time: now.toISOString()
-      },
-      hourly: hourlyList,
-      daily: dailyList
-    };
-  }
-
-  /**
-   * Main weather fetch function that respects provider choice & auto-falls back safely
-   * Includes high-speed in-memory caching to eliminate redundant latency
+   * Main weather fetch function that respects provider choice & auto-falls back safely.
+   * Never fabricates fake weather data or silently coerces missing numbers to 0.
    */
   async function getWeather(lat, lon, locationInfo = {}) {
     const latNum = Number(lat);
     const lonNum = Number(lon);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lonNum)) {
+      throw new Error(`Invalid geographic coordinates: lat=${lat}, lon=${lon}`);
+    }
+
     const provider = getProvider();
     const cacheKey = `${latNum.toFixed(2)},${lonNum.toFixed(2)}_${provider}`;
 
@@ -588,35 +567,93 @@ const WeatherAPI = (function () {
       return cached.data;
     }
 
-    let result;
+    let result = null;
+    let primaryErr = null;
     const owmKey = getOwmApiKey();
 
     if (provider === 'openweathermap' && owmKey) {
       try {
-        result = await fetchFromOpenWeatherMap(lat, lon, owmKey, locationInfo);
+        result = await fetchFromOpenWeatherMap(latNum, lonNum, owmKey, locationInfo);
       } catch (owmErr) {
-        console.warn('OpenWeatherMap failed, falling back to Open-Meteo:', owmErr);
+        primaryErr = owmErr;
+        console.warn('OpenWeatherMap primary request failed, attempting Open-Meteo fallback:', owmErr);
         try {
-          const data = await fetchFromOpenMeteo(lat, lon, locationInfo);
-          data.fallbackNotice = `OpenWeatherMap failed (${owmErr.message}). Displaying live Open-Meteo forecast.`;
-          result = data;
+          result = await fetchFromOpenMeteo(latNum, lonNum, locationInfo);
+          if (result) {
+            result.fallbackNotice = `OpenWeatherMap unavailable (${owmErr.message}). Displaying live Open-Meteo telemetry.`;
+          }
         } catch (meteoErr) {
-          console.warn('Open-Meteo also unreachable, switching to local telemetry:', meteoErr);
-          result = generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
+          console.warn('Both OpenWeatherMap and Open-Meteo failed:', meteoErr);
         }
       }
     } else {
+      // Primary default provider: Open-Meteo
       try {
-        result = await fetchFromOpenMeteo(lat, lon, locationInfo);
-      } catch (err) {
-        console.warn('Open-Meteo unreachable, switching to local telemetry:', err);
-        result = generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
+        result = await fetchFromOpenMeteo(latNum, lonNum, locationInfo);
+      } catch (meteoErr) {
+        primaryErr = meteoErr;
+        console.warn('Open-Meteo primary request failed, attempting OpenWeatherMap fallback:', meteoErr);
+        // Fallback to OpenWeatherMap via client key or server proxy
+        try {
+          if (owmKey) {
+            result = await fetchFromOpenWeatherMap(latNum, lonNum, owmKey, locationInfo);
+            if (result) {
+              result.fallbackNotice = 'Open-Meteo was unreachable. Displaying live OpenWeatherMap telemetry.';
+            }
+          } else {
+            const serverOwmRes = await safeFetchJson(`/api/weather/owm?lat=${latNum}&lon=${lonNum}`);
+            if (serverOwmRes && !serverOwmRes.error && serverOwmRes.main) {
+              result = normalizeOpenWeatherMapData(serverOwmRes, { list: [] }, locationInfo, latNum, lonNum);
+              result.fallbackNotice = 'Open-Meteo unreachable. Displaying live OpenWeatherMap server telemetry.';
+            }
+          }
+        } catch (owmFallbackErr) {
+          console.warn('OpenWeatherMap fallback also unreachable:', owmFallbackErr);
+        }
       }
     }
 
-    if (result && result.current) {
-      weatherCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    // If data could not be retrieved from any live provider:
+    if (!result || !result.current || result.current.temp === null) {
+      const errorMsg = primaryErr ? primaryErr.message : 'Weather service temporarily unreachable. Please retry.';
+      result = {
+        provider: 'SkyPulse Global Engine',
+        status: 'error',
+        error: errorMsg,
+        city: locationInfo.name || 'Selected Location',
+        country: locationInfo.country || '',
+        countryCode: locationInfo.countryCode || '',
+        admin: locationInfo.admin || '',
+        coordinates: { lat: latNum, lon: lonNum },
+        current: {
+          temp: null,
+          feelsLike: null,
+          condition: 'Weather unavailable',
+          icon: 'cloud',
+          category: 'cloudy',
+          climate: 'cloudy',
+          isDay: true,
+          tempMax: null,
+          tempMin: null,
+          humidity: null,
+          windSpeed: null,
+          windDirection: 0,
+          pressure: null,
+          uvIndex: null,
+          visibility: null,
+          precipitation: null,
+          sunrise: '--:--',
+          sunset: '--:--',
+          time: new Date().toISOString(),
+          status: 'error'
+        },
+        hourly: [],
+        daily: []
+      };
+      return result;
     }
+
+    weatherCache.set(cacheKey, { timestamp: Date.now(), data: result });
     return result;
   }
 
@@ -625,8 +662,7 @@ const WeatherAPI = (function () {
     if (!isoString) return '';
     const parts = isoString.split('T');
     if (parts.length > 1) {
-      const timePart = parts[1].slice(0, 5);
-      return timePart;
+      return parts[1].slice(0, 5);
     }
     return isoString;
   }
@@ -638,6 +674,7 @@ const WeatherAPI = (function () {
   }
 
   function capitalize(str) {
+    if (!str) return '';
     return str.replace(/\b\w/g, l => l.toUpperCase());
   }
 
@@ -645,6 +682,7 @@ const WeatherAPI = (function () {
     searchLocations,
     reverseGeocode,
     getWeather,
+    formatTemp,
     getProvider,
     setProvider,
     getOwmApiKey,

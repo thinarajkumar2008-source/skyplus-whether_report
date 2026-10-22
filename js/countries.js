@@ -280,13 +280,14 @@ const WorldWeather = (function () {
     humidity: null,
     wind: null,
     status: 'idle', // 'idle' | 'loading' | 'loaded' | 'cached' | 'error'
-    lastUpdated: null
+    lastUpdated: null,
+    error: null
   }));
 
   let isFetching = false;
   let lastSyncTime = null;
 
-  // Restore cache if valid
+  // Restore cache if valid (strictly numeric temperatures, preserving genuine 0°C)
   try {
     if (typeof localStorage !== 'undefined') {
       const cached = localStorage.getItem(STORAGE_KEY);
@@ -298,7 +299,7 @@ const WorldWeather = (function () {
             const cachedMap = new Map(parsed.items.map(p => [p.id, p]));
             items = items.map(c => {
               const cachedItem = cachedMap.get(c.id);
-              if (cachedItem && cachedItem.temp !== null) {
+              if (cachedItem && typeof cachedItem.temp === 'number' && Number.isFinite(cachedItem.temp)) {
                 return { ...c, ...cachedItem, status: 'cached' };
               }
               return c;
@@ -313,15 +314,84 @@ const WorldWeather = (function () {
   }
 
   /**
-   * Progressive batch fetch for specified countries (concurrency limited to max 25 at a time)
+   * Helper to attempt OpenWeatherMap fallback for a single country
    */
-  async function fetchBatch(targetList, onProgress) {
-    if (!targetList || targetList.length === 0) return items;
-    if (isFetching) return items;
+  async function tryFallbackForCountry(item) {
+    try {
+      const base = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null') ? window.location.origin : '';
+      const owmKey = typeof WeatherAPI !== 'undefined' ? WeatherAPI.getOwmApiKey() : '';
+      let owmRes = null;
+      if (owmKey) {
+        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${item.lat}&lon=${item.lon}&units=metric&appid=${owmKey}`;
+        const proxyUrl = `${base}/api/proxy?url=${encodeURIComponent(url)}`;
+        const res = await fetch(proxyUrl);
+        if (res.ok) owmRes = await res.json();
+      } else {
+        const res = await fetch(`${base}/api/weather/owm?lat=${item.lat}&lon=${item.lon}`);
+        if (res.ok) owmRes = await res.json();
+      }
+
+      if (owmRes && owmRes.main && typeof owmRes.main.temp === 'number' && Number.isFinite(owmRes.main.temp)) {
+        item.temp = owmRes.main.temp;
+        item.humidity = typeof owmRes.main.humidity === 'number' ? owmRes.main.humidity : null;
+        item.wind = (owmRes.wind && typeof owmRes.wind.speed === 'number') ? Math.round(owmRes.wind.speed * 3.6) : null;
+        item.condition = (owmRes.weather && owmRes.weather[0] && owmRes.weather[0].description)
+          ? owmRes.weather[0].description.replace(/\b\w/g, l => l.toUpperCase())
+          : 'Clear';
+        item.status = 'loaded';
+        item.lastUpdated = new Date().toISOString();
+        item.error = null;
+        return true;
+      }
+    } catch (e) {
+      console.warn(`Fallback failed for ${item.city}:`, e);
+    }
+    return false;
+  }
+
+  /**
+   * Progressive batch fetch for countries.
+   * Handles targetArg as a number (e.g. 25 countries), an array of countries, or fetches un-loaded countries.
+   * Returns: { items, updatedCount, totalLoaded, totalCountries, errors }
+   */
+  async function fetchBatch(targetArg, onProgress) {
+    if (isFetching) {
+      return {
+        items: items,
+        updatedCount: 0,
+        totalLoaded: items.filter(c => (c.status === 'loaded' || c.status === 'cached') && typeof c.temp === 'number').length,
+        totalCountries: items.length,
+        errors: 0
+      };
+    }
+
+    let targetList = [];
+    if (typeof targetArg === 'number') {
+      const pending = items.filter(c => c.status !== 'loaded' && c.status !== 'cached');
+      targetList = pending.length > 0 ? pending.slice(0, targetArg) : items.slice(0, targetArg);
+    } else if (Array.isArray(targetArg) && targetArg.length > 0) {
+      targetList = targetArg;
+    } else {
+      const pending = items.filter(c => c.status !== 'loaded');
+      targetList = pending.length > 0 ? pending : items;
+    }
+
+    if (targetList.length === 0) {
+      return {
+        items: items,
+        updatedCount: 0,
+        totalLoaded: items.filter(c => (c.status === 'loaded' || c.status === 'cached') && typeof c.temp === 'number').length,
+        totalCountries: items.length,
+        errors: 0
+      };
+    }
+
     isFetching = true;
+    let updatedCount = 0;
+    let errorCount = 0;
 
     try {
-      const BATCH_SIZE = 25;
+      const BATCH_SIZE = 20;
       const chunks = [];
       for (let i = 0; i < targetList.length; i += BATCH_SIZE) {
         chunks.push(targetList.slice(i, i + BATCH_SIZE));
@@ -338,11 +408,13 @@ const WorldWeather = (function () {
         const lons = chunk.map(c => c.lon).join(',');
         const url = 'https://api.open-meteo.com/v1/forecast?latitude=' + lats + '&longitude=' + lons + '&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto';
 
+        let chunkSuccess = false;
         try {
           let data = null;
           if (typeof window !== 'undefined' && window.location && window.location.protocol && window.location.protocol.startsWith('http')) {
             try {
-              const proxyUrl = '/api/proxy?url=' + encodeURIComponent(url);
+              const base = (window.location.origin && window.location.origin !== 'null') ? window.location.origin : '';
+              const proxyUrl = base + '/api/proxy?url=' + encodeURIComponent(url);
               const pRes = await fetch(proxyUrl);
               if (pRes.ok) data = await pRes.json();
             } catch (pErr) {}
@@ -356,37 +428,69 @@ const WorldWeather = (function () {
             const results = Array.isArray(data) ? data : [data];
             const nowIso = new Date().toISOString();
 
-            results.forEach((itemData, idx) => {
+            for (let idx = 0; idx < results.length; idx++) {
+              const itemData = results[idx];
               const targetItem = chunk[idx];
-              if (targetItem) {
-                const item = items.find(it => it.id === targetItem.id);
-                if (item && itemData && itemData.current) {
-                  const cur = itemData.current;
-                  const mapped = WMO_MAP[cur.weather_code] || { condition: 'Fair', icon: 'sun-cloud' };
-                  item.temp = Math.round(cur.temperature_2m);
-                  item.humidity = Math.round(cur.relative_humidity_2m);
-                  item.wind = Math.round(cur.wind_speed_10m);
-                  item.condition = mapped.condition;
-                  item.icon = mapped.icon;
-                  item.status = 'loaded';
-                  item.lastUpdated = nowIso;
+              if (!targetItem) continue;
+
+              const item = items.find(it => it.id === targetItem.id);
+              if (!item) continue;
+
+              if (itemData && itemData.current && typeof itemData.current.temperature_2m === 'number' && Number.isFinite(itemData.current.temperature_2m)) {
+                const cur = itemData.current;
+                const mapped = WMO_MAP[cur.weather_code] || { condition: 'Fair', icon: 'sun-cloud' };
+                item.temp = cur.temperature_2m;
+                item.humidity = (typeof cur.relative_humidity_2m === 'number' && Number.isFinite(cur.relative_humidity_2m)) ? Math.round(cur.relative_humidity_2m) : null;
+                item.wind = (typeof cur.wind_speed_10m === 'number' && Number.isFinite(cur.wind_speed_10m)) ? Math.round(cur.wind_speed_10m) : null;
+                item.condition = mapped.condition;
+                item.icon = mapped.icon;
+                item.status = 'loaded';
+                item.lastUpdated = nowIso;
+                item.error = null;
+                updatedCount++;
+              } else {
+                // Incomplete telemetry from primary provider, attempt fallback
+                const fallbackOk = await tryFallbackForCountry(item);
+                if (fallbackOk) {
+                  updatedCount++;
+                } else {
+                  item.status = 'error';
+                  item.temp = null;
+                  item.condition = 'Weather unavailable';
+                  item.error = 'Incomplete telemetry';
+                  errorCount++;
                 }
               }
-            });
+            }
+            chunkSuccess = true;
           }
         } catch (chunkErr) {
           console.warn('Batch fetch failed for chunk ' + chunkIdx + ':', chunkErr);
-          chunk.forEach(c => {
+        }
+
+        // If the entire chunk network request failed, attempt fallback or mark error per item
+        if (!chunkSuccess) {
+          for (const c of chunk) {
             const item = items.find(it => it.id === c.id);
-            if (item && item.status !== 'loaded') item.status = 'error';
-          });
+            if (!item) continue;
+            const fallbackOk = await tryFallbackForCountry(item);
+            if (fallbackOk) {
+              updatedCount++;
+            } else {
+              item.status = 'error';
+              item.temp = null;
+              item.condition = 'Weather unavailable';
+              item.error = 'Network request failed';
+              errorCount++;
+            }
+          }
         }
 
         if (typeof onProgress === 'function') {
           onProgress(Math.round(((chunkIdx + 1) / chunks.length) * 100));
         }
 
-        // Brief yield between chunks
+        // Brief yield between chunks to prevent CPU spikes and rate limits
         await new Promise(r => setTimeout(r, 60));
       }
 
@@ -397,13 +501,32 @@ const WorldWeather = (function () {
       isFetching = false;
     }
 
-    return items;
+    const totalLoaded = items.filter(c => (c.status === 'loaded' || c.status === 'cached') && typeof c.temp === 'number').length;
+    return {
+      items: items,
+      updatedCount: updatedCount,
+      totalLoaded: totalLoaded,
+      totalCountries: items.length,
+      errors: errorCount
+    };
+  }
+
+  /**
+   * Fetch a single country's weather on demand (e.g. on card Retry click)
+   */
+  async function fetchCountry(countryId) {
+    const item = items.find(it => it.id === countryId);
+    if (!item) return null;
+    item.status = 'loading';
+    await fetchBatch([item]);
+    saveCache();
+    return item;
   }
 
   function saveCache() {
     try {
       if (typeof localStorage !== 'undefined') {
-        const validItems = items.filter(it => it.status === 'loaded' || it.status === 'cached');
+        const validItems = items.filter(it => (it.status === 'loaded' || it.status === 'cached') && typeof it.temp === 'number');
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           items: validItems,
           timestamp: lastSyncTime
@@ -439,27 +562,35 @@ const WorldWeather = (function () {
       );
     }
 
-    // 4. Sorting
+    // 4. Sorting: strictly preserves genuine numeric 0°C and places missing values at the end
     switch (sortOption) {
       case 'temp-desc':
         result.sort((a, b) => {
-          if (a.temp === null) return 1;
-          if (b.temp === null) return -1;
-          return b.temp - a.temp;
+          const aVal = (typeof a.temp === 'number' && Number.isFinite(a.temp)) ? a.temp : -Infinity;
+          const bVal = (typeof b.temp === 'number' && Number.isFinite(b.temp)) ? b.temp : -Infinity;
+          return bVal - aVal;
         });
         break;
       case 'temp-asc':
         result.sort((a, b) => {
-          if (a.temp === null) return 1;
-          if (b.temp === null) return -1;
-          return a.temp - b.temp;
+          const aVal = (typeof a.temp === 'number' && Number.isFinite(a.temp)) ? a.temp : Infinity;
+          const bVal = (typeof b.temp === 'number' && Number.isFinite(b.temp)) ? b.temp : Infinity;
+          return aVal - bVal;
         });
         break;
       case 'wind-desc':
-        result.sort((a, b) => (b.wind || 0) - (a.wind || 0));
+        result.sort((a, b) => {
+          const aVal = (typeof a.wind === 'number' && Number.isFinite(a.wind)) ? a.wind : -Infinity;
+          const bVal = (typeof b.wind === 'number' && Number.isFinite(b.wind)) ? b.wind : -Infinity;
+          return bVal - aVal;
+        });
         break;
       case 'humidity-desc':
-        result.sort((a, b) => (b.humidity || 0) - (a.humidity || 0));
+        result.sort((a, b) => {
+          const aVal = (typeof a.humidity === 'number' && Number.isFinite(a.humidity)) ? a.humidity : -Infinity;
+          const bVal = (typeof b.humidity === 'number' && Number.isFinite(b.humidity)) ? b.humidity : -Infinity;
+          return bVal - aVal;
+        });
         break;
       case 'name-desc':
         result.sort((a, b) => b.country.localeCompare(a.country));
@@ -478,7 +609,7 @@ const WorldWeather = (function () {
    */
   function getStats() {
     const totalCount = items.length;
-    const valid = items.filter(c => c.temp !== null && (c.status === 'loaded' || c.status === 'cached'));
+    const valid = items.filter(c => typeof c.temp === 'number' && Number.isFinite(c.temp) && (c.status === 'loaded' || c.status === 'cached'));
     const loadingCount = items.filter(c => c.status === 'loading').length;
     const unavailableCount = items.filter(c => c.status === 'error' || (c.status === 'idle' && c.temp === null)).length;
 
@@ -523,7 +654,7 @@ const WorldWeather = (function () {
    * Calculate live atmospheric condition distribution strictly based on actual available data
    */
   function getDistribution() {
-    const valid = items.filter(c => c.temp !== null && (c.status === 'loaded' || c.status === 'cached'));
+    const valid = items.filter(c => typeof c.temp === 'number' && Number.isFinite(c.temp) && (c.status === 'loaded' || c.status === 'cached'));
     if (valid.length === 0) return [];
 
     const counts = { sunny: 0, cloudy: 0, rainy: 0, stormy: 0, snowy: 0 };
@@ -558,6 +689,7 @@ const WorldWeather = (function () {
   return {
     getAll: () => items,
     fetchBatch,
+    fetchCountry,
     filterAndSort,
     getStats,
     getDistribution,

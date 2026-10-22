@@ -1014,13 +1014,22 @@
   }
 
   /**
-   * Helper: Format temperature based on unit
+   * Helper: Format temperature based on unit.
+   * Strictly preserves numeric 0°C (32°F) as valid temperature.
+   * Returns placeholder '--' for null/undefined/missing values (never coerced to 0).
    */
-  function formatTemp(celsius) {
-    if (state.unit === 'F') {
-      return Math.round((celsius * 9/5) + 32);
+  function formatTemp(celsius, placeholder = '--') {
+    if (celsius === null || celsius === undefined || celsius === '') {
+      return placeholder;
     }
-    return Math.round(celsius);
+    const num = Number(celsius);
+    if (!Number.isFinite(num)) {
+      return placeholder;
+    }
+    if (state.unit === 'F') {
+      return Math.round((num * 9 / 5) + 32);
+    }
+    return Math.round(num);
   }
 
   /**
@@ -1831,18 +1840,103 @@
 
     list.forEach(c => {
       const card = document.createElement('div');
-      card.className = 'country-card';
+      const isLoaded = (c.status === 'loaded' || c.status === 'cached') && typeof c.temp === 'number' && Number.isFinite(c.temp);
+      const isLoading = c.status === 'loading';
+      const isError = c.status === 'error';
+      const isIdle = c.status === 'idle' && !isLoaded;
+
+      card.className = `country-card ${isLoading ? 'is-loading' : ''} ${isError ? 'is-error' : ''}`;
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('title', `Click to load full weather for ${c.city}, ${c.country} (${c.iso3 || c.code})`);
+      card.setAttribute('title', isLoaded ? `Click to load full weather for ${c.city}, ${c.country} (${c.iso3 || c.code})` : `${c.city}, ${c.country}`);
 
-      const formattedTemp = formatTemp(c.temp);
-      const formattedWind = state.unit === 'F'
-        ? `${Math.round(c.wind * 0.621371)} mph`
-        : `${c.wind} km/h`;
-
-      const iconSvg = typeof WeatherIcons !== 'undefined' ? WeatherIcons.get(c.icon) : '';
       const typeTag = c.type === 'territory' ? 'Territory' : c.region;
+      const iconSvg = typeof WeatherIcons !== 'undefined' ? WeatherIcons.get(c.icon || 'cloud-sun') : '';
+
+      let middleHtml = '';
+      let conditionHtml = '';
+      let bottomHtml = '';
+
+      if (isLoading) {
+        middleHtml = `
+          <div class="country-weather-middle">
+            <div class="country-temp-display">
+              <span class="country-loading-pulse">Loading weather…</span>
+            </div>
+            <div class="country-icon-holder"><div class="country-mini-spinner"></div></div>
+          </div>
+        `;
+        conditionHtml = `<div class="country-cond-txt country-cond-loading">Syncing atmospheric telemetry…</div>`;
+        bottomHtml = `
+          <div class="country-card-bottom">
+            <span class="country-stat-item">💧 Loading…</span>
+            <span class="country-stat-item">💨 Loading…</span>
+            <span class="country-click-hint">Syncing…</span>
+          </div>
+        `;
+      } else if (isError) {
+        middleHtml = `
+          <div class="country-weather-middle">
+            <div class="country-temp-display">
+              <span class="country-unavailable-badge">Unavailable</span>
+            </div>
+            <div class="country-icon-holder">${WeatherIcons.get('cloud-alert') || iconSvg}</div>
+          </div>
+        `;
+        conditionHtml = `<div class="country-cond-txt country-cond-error" title="Weather data unavailable">Weather unavailable</div>`;
+        bottomHtml = `
+          <div class="country-card-bottom">
+            <span class="country-stat-item">💧 Unavailable</span>
+            <span class="country-stat-item">💨 Unavailable</span>
+            <button class="country-retry-btn" data-retry-id="${c.id}" title="Retry weather telemetry for ${c.city}">↺ Retry</button>
+          </div>
+        `;
+      } else if (isIdle) {
+        middleHtml = `
+          <div class="country-weather-middle">
+            <div class="country-temp-display">
+              <span class="country-temp-pending">--</span>
+              <span class="country-temp-deg">°${state.unit}</span>
+            </div>
+            <div class="country-icon-holder">${iconSvg}</div>
+          </div>
+        `;
+        conditionHtml = `<div class="country-cond-txt" title="Pending Sync">Pending Telemetry</div>`;
+        bottomHtml = `
+          <div class="country-card-bottom">
+            <span class="country-stat-item">💧 --</span>
+            <span class="country-stat-item">💨 --</span>
+            <button class="country-retry-btn" data-retry-id="${c.id}" title="Sync weather for ${c.city}">Sync</button>
+          </div>
+        `;
+      } else {
+        // Successfully loaded / cached with genuine numeric temperature (including 0°C)
+        const formattedTemp = formatTemp(c.temp);
+        const formattedWind = typeof c.wind === 'number' && Number.isFinite(c.wind)
+          ? (state.unit === 'F' ? `${Math.round(c.wind * 0.621371)} mph` : `${c.wind} km/h`)
+          : 'Wind unavailable';
+        const formattedHumidity = typeof c.humidity === 'number' && Number.isFinite(c.humidity)
+          ? `${c.humidity}%`
+          : 'Humidity unavailable';
+
+        middleHtml = `
+          <div class="country-weather-middle">
+            <div class="country-temp-display">
+              <span class="country-temp-num">${formattedTemp}</span>
+              <span class="country-temp-deg">°${state.unit}</span>
+            </div>
+            <div class="country-icon-holder">${iconSvg}</div>
+          </div>
+        `;
+        conditionHtml = `<div class="country-cond-txt" title="${c.condition}">${c.condition}</div>`;
+        bottomHtml = `
+          <div class="country-card-bottom">
+            <span class="country-stat-item" title="Humidity">💧 ${formattedHumidity}</span>
+            <span class="country-stat-item" title="Wind Speed">💨 ${formattedWind}</span>
+            <span class="country-click-hint">View Forecast →</span>
+          </div>
+        `;
+      }
 
       card.innerHTML = `
         <div class="country-card-top">
@@ -1855,22 +1949,26 @@
           </div>
           <span class="country-region-tag ${c.type === 'territory' ? 'is-territory' : ''}">${typeTag}</span>
         </div>
-        <div class="country-weather-middle">
-          <div class="country-temp-display">
-            <span class="country-temp-num">${formattedTemp}</span>
-            <span class="country-temp-deg">°${state.unit}</span>
-          </div>
-          <div class="country-icon-holder">${iconSvg}</div>
-        </div>
-        <div class="country-cond-txt" title="${c.condition}">${c.condition}</div>
-        <div class="country-card-bottom">
-          <span class="country-stat-item">💧 ${c.humidity}%</span>
-          <span class="country-stat-item">💨 ${formattedWind}</span>
-          <span class="country-click-hint">View Forecast →</span>
-        </div>
+        ${middleHtml}
+        ${conditionHtml}
+        ${bottomHtml}
       `;
 
-      card.addEventListener('click', () => {
+      card.addEventListener('click', async (e) => {
+        const retryBtn = e.target.closest('.country-retry-btn');
+        if (retryBtn) {
+          e.stopPropagation();
+          const targetId = Number(retryBtn.getAttribute('data-retry-id'));
+          retryBtn.textContent = '…';
+          retryBtn.disabled = true;
+          await WorldWeather.fetchCountry(targetId);
+          renderWorldWeatherGrid();
+          updateWorldStats();
+          updateWorldDistribution();
+          initOrUpdateWorldMap();
+          return;
+        }
+
         const location = {
           name: `${c.city}, ${c.country}`,
           country: c.country,
@@ -1906,13 +2004,19 @@
     if (!stats) return;
 
     if (elements.statWarmest) {
-      elements.statWarmest.textContent = `${stats.warmest.flag} ${stats.warmest.city} (${formatTemp(stats.warmest.temp)}°${state.unit})`;
+      elements.statWarmest.textContent = stats.warmest 
+        ? `${stats.warmest.flag} ${stats.warmest.city} (${formatTemp(stats.warmest.temp)}°${state.unit})`
+        : '--';
     }
     if (elements.statColdest) {
-      elements.statColdest.textContent = `${stats.coldest.flag} ${stats.coldest.city} (${formatTemp(stats.coldest.temp)}°${state.unit})`;
+      elements.statColdest.textContent = stats.coldest 
+        ? `${stats.coldest.flag} ${stats.coldest.city} (${formatTemp(stats.coldest.temp)}°${state.unit})`
+        : '--';
     }
     if (elements.statAverage) {
-      elements.statAverage.textContent = `${formatTemp(stats.average)}°${state.unit} Planetary Avg`;
+      elements.statAverage.textContent = stats.average !== null 
+        ? `${formatTemp(stats.average)}°${state.unit} Planetary Avg`
+        : '--';
     }
     if (elements.statCount) {
       elements.statCount.textContent = `${stats.loadedCount} / ${stats.totalCount} Updated`;
@@ -1974,8 +2078,10 @@
 
     // Add markers for all countries
     countries.forEach(c => {
-      const formattedTemp = formatTemp(c.temp);
-      const formattedWind = state.unit === 'F' ? `${Math.round(c.wind * 0.621371)} mph` : `${c.wind} km/h`;
+      const isLoaded = (c.status === 'loaded' || c.status === 'cached') && typeof c.temp === 'number' && Number.isFinite(c.temp);
+      const formattedTemp = isLoaded ? formatTemp(c.temp) : '--';
+      const formattedWind = typeof c.wind === 'number' ? (state.unit === 'F' ? `${Math.round(c.wind * 0.621371)} mph` : `${c.wind} km/h`) : '--';
+      const formattedHum = typeof c.humidity === 'number' ? `${c.humidity}%` : '--';
       const icon = L.divIcon({
         className: 'custom-pin-wrapper',
         html: `<div class="custom-weather-pin">${c.flag} ${formattedTemp}°</div>`,
@@ -1989,7 +2095,7 @@
         <div class="map-popup-card">
           <div class="map-popup-header">${c.flag} ${c.city}, ${c.country} (${c.iso3 || c.code})</div>
           <div class="map-popup-temp">${formattedTemp}°${state.unit}</div>
-          <div class="map-popup-cond">${c.condition} • 💧 ${c.humidity}% • 💨 ${formattedWind}</div>
+          <div class="map-popup-cond">${c.condition} • 💧 ${formattedHum} • 💨 ${formattedWind}</div>
           <button class="map-popup-focus-btn" onclick="window.SkyPulseFocus('${c.city}', '${c.country}', ${c.lat}, ${c.lon}, '${c.condition}')">Focus in Hero</button>
         </div>
       `;

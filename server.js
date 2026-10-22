@@ -3,7 +3,30 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 3000;
+// Load environment variables from .env if present
+try {
+  const envPath = path.join(__dirname, '.env');
+  if (fs.existsSync(envPath)) {
+    const envRaw = fs.readFileSync(envPath, 'utf8');
+    envRaw.split(/\r?\n/).forEach(line => {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith('#')) {
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx !== -1) {
+          const k = trimmed.slice(0, eqIdx).trim();
+          const v = trimmed.slice(eqIdx + 1).trim();
+          if (k && !(k in process.env)) {
+            process.env[k] = v;
+          }
+        }
+      }
+    });
+  }
+} catch (e) {
+  console.warn('[Server] Could not parse .env:', e.message);
+}
+
+const PORT = process.env.PORT || 3000;
 
 // Custom HTTPS agent to handle corporate firewall & proxy certificates
 const agent = new https.Agent({ rejectUnauthorized: false, keepAlive: true });
@@ -133,6 +156,66 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Dual API Fallback Proxy Endpoint: OpenWeatherMap (keeps server API key secure)
+  if (reqUrl.pathname === '/api/weather/owm') {
+    const lat = reqUrl.searchParams.get('lat');
+    const lon = reqUrl.searchParams.get('lon');
+    const clientKey = reqUrl.searchParams.get('apiKey');
+    const apiKey = clientKey || process.env.OPENWEATHERMAP_API_KEY;
+
+    if (!apiKey) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'OpenWeatherMap API key not configured', configured: false }));
+      return;
+    }
+
+    if (!lat || !lon) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing lat or lon parameters' }));
+      return;
+    }
+
+    const owmUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&units=metric&appid=${encodeURIComponent(apiKey)}`;
+    const options = {
+      agent: agent,
+      timeout: 10000,
+      headers: { 'Accept': 'application/json' }
+    };
+
+    const owmReq = https.get(owmUrl, options, (owmRes) => {
+      let body = '';
+      owmRes.on('data', chunk => { body += chunk; });
+      owmRes.on('end', () => {
+        if (!res.writableEnded) {
+          res.writeHead(owmRes.statusCode, { 'Content-Type': 'application/json' });
+          res.end(body);
+        }
+      });
+      owmRes.on('error', (err) => {
+        if (!res.writableEnded) {
+          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'OpenWeatherMap upstream error: ' + err.message }));
+        }
+      });
+    });
+
+    owmReq.on('error', (err) => {
+      if (!res.writableEnded) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to contact OpenWeatherMap: ' + err.message }));
+      }
+    });
+
+    owmReq.on('timeout', () => {
+      owmReq.destroy();
+      if (!res.writableEnded) {
+        res.writeHead(504, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'OpenWeatherMap request timeout' }));
+      }
+    });
+    return;
+  }
+
   // Static File Serving & SPA Fallback
   let cleanUrl = reqUrl.pathname;
   let ext = path.extname(cleanUrl);
@@ -167,7 +250,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, () => {
   console.log(`SkyPulse Weather App running at:`);
   console.log(`  > http://localhost:${PORT}`);
   console.log(`  > http://127.0.0.1:${PORT}`);

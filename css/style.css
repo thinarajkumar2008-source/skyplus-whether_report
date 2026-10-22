@@ -2279,6 +2279,87 @@ body {
   opacity: 1;
 }
 
+/* Country Card Telemetry States & Retry Button */
+.country-card.is-loading {
+  border-color: rgba(53, 215, 255, 0.2);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.country-card.is-error {
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.country-loading-pulse {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent-cyan);
+  animation: pulseOpacity 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.country-mini-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(53, 215, 255, 0.2);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.country-unavailable-badge {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.country-temp-pending {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.country-cond-loading {
+  color: var(--accent-cyan);
+  font-style: italic;
+}
+
+.country-cond-error {
+  color: #F87171;
+}
+
+.country-retry-btn {
+  background: rgba(53, 215, 255, 0.1);
+  border: 1px solid rgba(53, 215, 255, 0.35);
+  color: var(--accent-cyan);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1.2;
+}
+
+.country-retry-btn:hover {
+  background: rgba(53, 215, 255, 0.25);
+  border-color: var(--accent-cyan);
+  color: #FFFFFF;
+  box-shadow: 0 0 10px rgba(53, 215, 255, 0.3);
+  transform: scale(1.04);
+}
+
+.country-retry-btn:active {
+  transform: scale(0.96);
+}
+
 /* Empty Search State */
 .world-empty {
   text-align: center;
