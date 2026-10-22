@@ -122,22 +122,46 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Static File Serving
+  // Safe Public Configuration Endpoint (Supabase public anon key / OWM presence)
+  if (reqUrl.pathname === '/api/config') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      supabaseUrl: process.env.SUPABASE_URL || '',
+      supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
+      hasOwmKey: !!process.env.OPENWEATHERMAP_API_KEY
+    }));
+    return;
+  }
+
+  // Static File Serving & SPA Fallback
   let cleanUrl = reqUrl.pathname;
-  let filePath = path.join(__dirname, cleanUrl === '/' ? 'index.html' : cleanUrl);
-  let ext = path.extname(filePath);
+  let ext = path.extname(cleanUrl);
+
+  // If request has no extension or is a known SPA route, serve index.html
+  const isSpaRoute = !ext || ['/login', '/signup', '/forgot-password', '/account'].includes(cleanUrl);
+  let filePath = isSpaRoute 
+    ? path.join(__dirname, 'index.html') 
+    : path.join(__dirname, cleanUrl);
 
   fs.readFile(filePath, (err, content) => {
     if (err) {
       if (err.code === 'ENOENT') {
-        res.writeHead(404, { 'Content-Type': 'text/plain' });
-        res.end('404 Not Found');
+        // Fallback to index.html for client-side routing
+        fs.readFile(path.join(__dirname, 'index.html'), (spaErr, spaContent) => {
+          if (!spaErr) {
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(spaContent);
+          } else {
+            res.writeHead(404, { 'Content-Type': 'text/plain' });
+            res.end('404 Not Found');
+          }
+        });
       } else {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('500 Internal Server Error');
       }
     } else {
-      res.writeHead(200, { 'Content-Type': MIME_TYPES[ext] || 'application/octet-stream' });
+      res.writeHead(200, { 'Content-Type': MIME_TYPES[path.extname(filePath)] || 'application/octet-stream' });
       res.end(content);
     }
   });

@@ -3,13 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkyPulse 2.0 | The Living Atmosphere</title>
-  <meta name="description" content="Cinematic, data-driven real-time weather observatory and 100-country atmospheric intelligence platform.">
+  <title>SkyPulse 3.0 | Global Weather Explorer & Atmospheric Platform</title>
+  <meta name="description" content="Cinematic worldwide weather observatory, real-time atmospheric surveillance for 225+ nations, and personalized meteorological dashboard.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <!-- Leaflet Map CSS for Global Weather Map -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <!-- Supabase Auth Client (Optional Cloud Sync) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="theme-sunny">
@@ -23,16 +25,16 @@
     
     <!-- Top Navigation Header -->
     <header class="app-header">
-      <div class="brand">
+      <div class="brand" role="button" tabindex="0" id="brandLogoBtn" title="Return to Home Dashboard">
         <div class="brand-icon" id="brandIcon">
           <!-- Animated sun/cloud SVG will be injected -->
         </div>
         <div>
           <div class="brand-title-wrap">
             <h1 class="brand-title">SkyPulse</h1>
-            <span class="brand-badge">2.0</span>
+            <span class="brand-badge">3.0</span>
           </div>
-          <p class="brand-subtitle">The Living Atmosphere</p>
+          <p class="brand-subtitle">Global Weather Explorer</p>
         </div>
       </div>
 
@@ -43,7 +45,7 @@
           <input 
             type="text" 
             id="searchInput" 
-            placeholder="Search city, capital, or country (e.g. Tokyo, Paris, New York)..." 
+            placeholder="Search 225+ countries, capitals, or ISO codes..." 
             autocomplete="off"
             spellcheck="false"
           >
@@ -73,11 +75,11 @@
           <span class="btn-text">Compare</span>
         </button>
 
-        <!-- 100 Countries Hub Shortcut -->
-        <button id="worldHubNavBtn" class="action-btn world-nav-btn" title="Explore 100 Countries Global Weather Report & Map">
+        <!-- All Countries Explorer Shortcut -->
+        <button id="worldHubNavBtn" class="action-btn world-nav-btn" title="Explore 225+ Countries Worldwide Weather Directory & Map">
           <span class="world-btn-icon">🌍</span>
-          <span class="btn-text">100 Countries</span>
-          <span class="badge-count">100</span>
+          <span class="btn-text">All Countries</span>
+          <span class="badge-count" id="headerCountryCount">227</span>
         </button>
 
         <!-- API Settings Button -->
@@ -85,6 +87,41 @@
           <span id="settingsIcon"></span>
           <span class="btn-text">API Setup</span>
         </button>
+
+        <!-- User Authentication & Account Menu -->
+        <div class="user-auth-wrap" id="userAuthWrap">
+          <button id="authNavBtn" class="action-btn auth-nav-btn" title="Sign In or Manage Account">
+            <span id="authNavIcon" class="auth-icon-holder"></span>
+            <span id="authNavText" class="btn-text">Sign In</span>
+          </button>
+
+          <!-- User Account Dropdown -->
+          <div class="user-dropdown-menu hidden" id="userDropdownMenu">
+            <div class="user-dropdown-header">
+              <div class="user-avatar-small" id="userAvatarSmall">US</div>
+              <div class="user-header-info">
+                <span class="user-header-name" id="userHeaderName">Guest Explorer</span>
+                <span class="user-header-email" id="userHeaderEmail">guest@skypulse.local</span>
+              </div>
+            </div>
+            <div class="user-dropdown-links">
+              <button id="dropAccountBtn" class="dropdown-item">
+                <span class="dropdown-item-icon">👤</span>
+                <span>Account Profile</span>
+              </button>
+              <button id="dropFavoritesBtn" class="dropdown-item">
+                <span class="dropdown-item-icon">⭐</span>
+                <span>My Favorites (<strong id="dropFavCount">0</strong>)</span>
+              </button>
+              <div class="dropdown-divider"></div>
+              <button id="dropSignOutBtn" class="dropdown-item text-danger">
+                <span class="dropdown-item-icon">🚪</span>
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </header>
 
@@ -93,12 +130,12 @@
       <div class="quick-group">
         <span class="quick-label">⭐ Favorites:</span>
         <div class="chips-container" id="favoritesChips">
-          <span class="empty-fav-hint">Star any city to pin here</span>
+          <span class="empty-fav-hint">Star any country or city to pin here</span>
         </div>
       </div>
       <div class="quick-divider"></div>
       <div class="quick-group">
-        <span class="quick-label">Popular:</span>
+        <span class="quick-label">Popular Hubs:</span>
         <div class="chips-container" id="quickChips">
           <button class="city-chip" data-city="London, UK">London</button>
           <button class="city-chip" data-city="New York, USA">New York</button>
@@ -106,6 +143,8 @@
           <button class="city-chip" data-city="Paris, France">Paris</button>
           <button class="city-chip" data-city="Dubai, UAE">Dubai</button>
           <button class="city-chip" data-city="Sydney, Australia">Sydney</button>
+          <button class="city-chip" data-city="New Delhi, India">New Delhi</button>
+          <button class="city-chip" data-city="Singapore, Singapore">Singapore</button>
         </div>
       </div>
     </div>
@@ -406,16 +445,16 @@
 
     </main>
  
-    <!-- 100 Countries Global Weather Section (The Intelligence Center) -->
+    <!-- 225+ Countries Global Weather Explorer (Worldwide Intelligence Center) -->
     <section class="world-section" id="worldSection">
       <div class="world-header-row">
         <div class="world-title-box">
           <div class="world-title-with-badge">
-            <h2 class="world-title">🌍 Global Weather Intelligence Center</h2>
-            <span class="live-pill" id="worldLivePill">100 Nations Live</span>
+            <h2 class="world-title">🌍 Worldwide Country Weather Explorer</h2>
+            <span class="live-pill" id="worldLivePill">227 Nations & Territories</span>
           </div>
           <p class="world-subtitle">
-            Real-time planetary atmospheric surveillance covering 100 sovereign nations. Compare temperatures, inspect condition distributions, or switch to the interactive world map.
+            Real-time planetary atmospheric surveillance covering all sovereign countries and territories. Compare temperatures, inspect live atmospheric distributions, or explore the interactive world map.
           </p>
         </div>
         <div class="world-actions">
@@ -431,9 +470,9 @@
             </button>
           </div>
 
-          <button id="refreshWorldBtn" class="refresh-world-btn" title="Refresh live weather for all 100 countries">
+          <button id="refreshWorldBtn" class="refresh-world-btn" title="Sync live weather for worldwide countries">
             <span class="refresh-icon" id="worldRefreshIcon">🔄</span>
-            <span class="btn-text">Sync Live 100</span>
+            <span class="btn-text" id="worldSyncBtnText">Sync Live Data</span>
           </button>
         </div>
       </div>
@@ -443,29 +482,29 @@
         <div class="world-stat-card">
           <span class="stat-icon">🔥</span>
           <div>
-            <span class="stat-meta">Warmest Country</span>
+            <span class="stat-meta">Warmest Monitored</span>
             <strong class="stat-hero" id="statWarmest">--</strong>
           </div>
         </div>
         <div class="world-stat-card">
           <span class="stat-icon">❄️</span>
           <div>
-            <span class="stat-meta">Coldest Country</span>
+            <span class="stat-meta">Coldest Monitored</span>
             <strong class="stat-hero" id="statColdest">--</strong>
           </div>
         </div>
         <div class="world-stat-card">
           <span class="stat-icon">🌐</span>
           <div>
-            <span class="stat-meta">Global Average Temp</span>
+            <span class="stat-meta">Planetary Average</span>
             <strong class="stat-hero" id="statAverage">--</strong>
           </div>
         </div>
         <div class="world-stat-card">
           <span class="stat-icon">📊</span>
           <div>
-            <span class="stat-meta">Countries Monitored</span>
-            <strong class="stat-hero" id="statCount">100 / 100</strong>
+            <span class="stat-meta">Updated Locations</span>
+            <strong class="stat-hero" id="statCount">0 / 227</strong>
           </div>
         </div>
       </div>
@@ -474,7 +513,7 @@
       <div class="world-distribution-box" id="worldDistributionBox">
         <div class="dist-header">
           <span class="dist-title">Global Atmospheric Distribution (Live Telemetry)</span>
-          <span class="dist-note" id="distCoverageNote">Calculated across 100 monitored sovereign nations</span>
+          <span class="dist-note" id="distCoverageNote">Calculated across successfully updated countries</span>
         </div>
         <div class="dist-bar-track" id="distBarTrack">
           <!-- Dynamic distribution segments injected via JS -->
@@ -492,7 +531,7 @@
           <input 
             type="text" 
             id="worldSearchInput" 
-            placeholder="Search 100 countries or capitals (e.g. India, Japan, France, Brazil, USA, Rome)..."
+            placeholder="Search country, capital, or code (e.g. India, Japan, France, Brazil, USA, Rome, DEU)..."
             autocomplete="off"
             spellcheck="false"
           >
@@ -501,16 +540,24 @@
 
         <!-- Region Filter Pills -->
         <div class="world-region-chips" id="worldRegionChips">
-          <button class="region-chip active" data-region="All">All (100)</button>
-          <button class="region-chip" data-region="Europe">Europe (26)</button>
-          <button class="region-chip" data-region="Asia">Asia (26)</button>
-          <button class="region-chip" data-region="Americas">Americas (22)</button>
-          <button class="region-chip" data-region="Africa">Africa (20)</button>
-          <button class="region-chip" data-region="Oceania">Oceania (6)</button>
+          <button class="region-chip active" data-region="All">All Continents</button>
+          <button class="region-chip" data-region="Europe">Europe</button>
+          <button class="region-chip" data-region="Asia">Asia</button>
+          <button class="region-chip" data-region="Americas">Americas</button>
+          <button class="region-chip" data-region="Africa">Africa</button>
+          <button class="region-chip" data-region="Oceania">Oceania</button>
+          <button class="region-chip" data-region="Antarctica">Antarctica</button>
         </div>
 
-        <!-- Sort Options -->
+        <!-- Type Filter & Sort Options -->
         <div class="world-sort-box">
+          <label for="worldTypeSelect" class="sort-label">Type:</label>
+          <select id="worldTypeSelect" class="world-select">
+            <option value="All">All Types</option>
+            <option value="sovereign">Sovereign Nations</option>
+            <option value="territory">Territories & Islands</option>
+          </select>
+
           <label for="worldSortSelect" class="sort-label">Sort:</label>
           <select id="worldSortSelect" class="world-select">
             <option value="name-asc">Country Name (A → Z)</option>
@@ -523,15 +570,22 @@
         </div>
       </div>
 
+      <!-- Progressive Fetch Status Banner -->
+      <div class="progressive-status-bar" id="progStatusBar">
+        <span class="prog-dot"></span>
+        <span id="progStatusText">Worldwide country directory ready. Live telemetry loads progressively.</span>
+        <button id="fetchMoreBtn" class="fetch-more-btn">Sync Next 25 Countries</button>
+      </div>
+
       <!-- Interactive Leaflet World Weather Map View (Toggleable) -->
       <div class="world-map-wrapper hidden" id="worldMapWrapper">
         <div id="worldWeatherMap" class="world-weather-map"></div>
         <div class="map-overlay-hint">
-          <span>Click any marker to preview weather or focus in the hero dashboard.</span>
+          <span>Click any country marker to view conditions or focus in the hero dashboard.</span>
         </div>
       </div>
 
-      <!-- 100 Countries Cards Grid View -->
+      <!-- Worldwide Countries Cards Grid View -->
       <div class="world-grid" id="worldGrid">
         <!-- Populated dynamically via JavaScript -->
       </div>
@@ -540,7 +594,7 @@
       <div class="world-empty hidden" id="worldEmptyState">
         <span class="empty-icon">🔍</span>
         <h3>No countries match your search</h3>
-        <p>Try searching for a different country name or select "All" continents.</p>
+        <p>Try searching for a different country name, capital, or continent filter.</p>
         <button id="resetWorldFiltersBtn" class="secondary-btn">Reset Filters</button>
       </div>
     </section>
@@ -548,12 +602,278 @@
     <!-- App Footer -->
     <footer class="app-footer">
       <div class="footer-brand">
-        <strong>SkyPulse 2.0</strong> — The Living Atmosphere
+        <strong>SkyPulse 3.0</strong> — Global Weather Explorer & Atmospheric Platform
       </div>
-      <p>Precision meteorological intelligence platform powered by Open-Meteo & OpenWeatherMap.</p>
-      <p class="footer-sub">Designed with Apple clarity, cinematic atmospheric depth, and full responsive glassmorphism.</p>
+      <p>Worldwide meteorological observatory powered by Open-Meteo & OpenWeatherMap.</p>
+      <p class="footer-sub">Designed with Apple clarity, cinematic atmospheric depth, and secure authentication.</p>
     </footer>
 
+  </div>
+
+  <!-- Split-Screen Authentication & Account Overlay Modal -->
+  <div class="auth-modal-backdrop hidden" id="authModal">
+    <div class="auth-modal-container">
+      
+      <!-- Desktop Split-Screen Left: Atmospheric Aurora Hero -->
+      <div class="auth-hero-pane">
+        <div class="auth-hero-top">
+          <div class="brand-title-wrap">
+            <div class="brand-icon" style="width:36px; height:36px;">
+              <!-- icon -->
+            </div>
+            <span class="brand-title" style="font-size:1.3rem;">SkyPulse 3.0</span>
+          </div>
+        </div>
+
+        <div class="auth-hero-content">
+          <span class="auth-eyebrow">METEOROLOGICAL INTELLIGENCE</span>
+          <h2 class="auth-hero-title">Your World.<br>Your Weather.</h2>
+          <p class="auth-hero-desc">
+            Explore the atmosphere, discover real-time conditions across 225+ nations, and synchronize personal favorites across all your devices.
+          </p>
+
+          <!-- Live Weather Preview Card -->
+          <div class="auth-preview-card" id="authLivePreviewCard">
+            <div class="auth-preview-top">
+              <span class="auth-preview-label">LIVE OBSERVATION</span>
+              <span class="auth-preview-badge" id="authPreviewBadge">Active</span>
+            </div>
+            <div class="auth-preview-body">
+              <div>
+                <strong class="auth-preview-city" id="authPreviewCity">London, UK</strong>
+                <span class="auth-preview-cond" id="authPreviewCond">Partly Cloudy</span>
+              </div>
+              <div class="auth-preview-temp" id="authPreviewTemp">18°C</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="auth-hero-footer">
+          <span class="security-badge">
+            <span class="shield-icon">🛡️</span>
+            <span>Client-side encryption & Supabase Cloud authentication</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- Desktop Split-Screen Right: Auth Forms & Profile -->
+      <div class="auth-form-pane">
+        <button id="closeAuthModalBtn" class="auth-close-btn" aria-label="Close modal">&times;</button>
+
+        <!-- Feedback Banner -->
+        <div class="auth-feedback hidden" id="authFeedback"></div>
+
+        <!-- 1. SIGN IN VIEW -->
+        <div class="auth-view" id="viewSignIn">
+          <h3 class="auth-form-title">Welcome Back</h3>
+          <p class="auth-form-sub">Sign in to access your synchronized favorites and personal weather preferences.</p>
+
+          <form id="signInForm" class="auth-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="loginEmail" class="form-label">Email Address</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="loginMailIcon"></span>
+                <input type="email" id="loginEmail" placeholder="you@example.com" required autocomplete="email">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div class="label-row">
+                <label for="loginPassword" class="form-label">Password</label>
+                <button type="button" class="form-link-btn" id="toForgotBtn">Forgot password?</button>
+              </div>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="loginLockIcon"></span>
+                <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+                <button type="button" class="pwd-toggle-btn" id="toggleLoginPwd" title="Show/Hide password">👁️</button>
+              </div>
+            </div>
+
+            <div class="form-check-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="loginRememberMe" checked>
+                <span>Remember me on this browser</span>
+              </label>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="signInSubmitBtn">
+              <span class="btn-text">Sign In</span>
+            </button>
+          </form>
+
+          <div class="auth-switch-text">
+            <span>Don't have an account?</span>
+            <button type="button" class="switch-link-btn" id="toSignUpBtn">Create Account</button>
+          </div>
+        </div>
+
+        <!-- 2. REGISTRATION (SIGN UP) VIEW -->
+        <div class="auth-view hidden" id="viewSignUp">
+          <h3 class="auth-form-title">Create Account</h3>
+          <p class="auth-form-sub">Join SkyPulse to save custom weather surveillance and favorites.</p>
+
+          <form id="signUpForm" class="auth-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="regName" class="form-label">Full Name</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="regUserIcon"></span>
+                <input type="text" id="regName" placeholder="Alex Morgan" required autocomplete="name">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="regEmail" class="form-label">Email Address</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="regMailIcon"></span>
+                <input type="email" id="regEmail" placeholder="alex@example.com" required autocomplete="email">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="regPassword" class="form-label">Create Password</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="regLockIcon"></span>
+                <input type="password" id="regPassword" placeholder="At least 6 characters" required autocomplete="new-password">
+                <button type="button" class="pwd-toggle-btn" id="toggleRegPwd" title="Show/Hide password">👁️</button>
+              </div>
+              <!-- Password Strength Bar -->
+              <div class="pwd-strength-container">
+                <div class="pwd-strength-bar" id="pwdStrengthBar"></div>
+              </div>
+              <span class="pwd-strength-text" id="pwdStrengthText">Password strength: Empty</span>
+            </div>
+
+            <div class="form-group">
+              <label for="regConfirmPassword" class="form-label">Confirm Password</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="regConfirmLockIcon"></span>
+                <input type="password" id="regConfirmPassword" placeholder="Repeat your password" required autocomplete="new-password">
+              </div>
+            </div>
+
+            <div class="form-check-row">
+              <label class="checkbox-label">
+                <input type="checkbox" id="regTerms" required checked>
+                <span>I accept the SkyPulse terms and private telemetry policy</span>
+              </label>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="signUpSubmitBtn">
+              <span class="btn-text">Create Account</span>
+            </button>
+          </form>
+
+          <div class="auth-switch-text">
+            <span>Already have an account?</span>
+            <button type="button" class="switch-link-btn" id="toSignInFromRegBtn">Sign In</button>
+          </div>
+        </div>
+
+        <!-- 3. FORGOT PASSWORD VIEW -->
+        <div class="auth-view hidden" id="viewForgot">
+          <h3 class="auth-form-title">Reset Password</h3>
+          <p class="auth-form-sub">Enter your email address to receive password recovery instructions.</p>
+
+          <form id="forgotForm" class="auth-form" onsubmit="return false;">
+            <div class="form-group">
+              <label for="forgotEmail" class="form-label">Registered Email</label>
+              <div class="input-icon-wrap">
+                <span class="field-icon" id="forgotMailIcon"></span>
+                <input type="email" id="forgotEmail" placeholder="you@example.com" required>
+              </div>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" id="forgotSubmitBtn">
+              <span class="btn-text">Send Recovery Instructions</span>
+            </button>
+
+            <!-- Reset Verification Fields (For Local Vault) -->
+            <div class="reset-token-box hidden" id="resetTokenBox">
+              <div class="form-group">
+                <label for="resetTokenInput" class="form-label">Verification Code / Token</label>
+                <input type="text" id="resetTokenInput" placeholder="rst_...">
+              </div>
+              <div class="form-group">
+                <label for="resetNewPwd" class="form-label">New Password</label>
+                <input type="password" id="resetNewPwd" placeholder="At least 6 characters">
+              </div>
+              <button type="button" class="auth-submit-btn" id="applyNewPwdBtn">Update Password</button>
+            </div>
+          </form>
+
+          <div class="auth-switch-text">
+            <button type="button" class="switch-link-btn" id="toSignInFromForgotBtn">← Back to Sign In</button>
+          </div>
+        </div>
+
+        <!-- 4. ACCOUNT PROFILE & PREFERENCES VIEW -->
+        <div class="auth-view hidden" id="viewAccount">
+          <div class="account-header-box">
+            <div class="account-avatar-large" id="accountAvatarLarge">JD</div>
+            <div>
+              <h3 class="account-user-name" id="accountUserName">Alex Morgan</h3>
+              <span class="account-user-email" id="accountUserEmail">alex@example.com</span>
+              <span class="account-auth-tag" id="accountAuthTag">Encrypted Local Vault</span>
+            </div>
+          </div>
+
+          <div class="account-section">
+            <h4 class="account-section-title">Personal Preferences</h4>
+            
+            <div class="pref-row">
+              <label for="accountDefaultCity" class="pref-label">Default Weather Hub:</label>
+              <select id="accountDefaultCity" class="world-select pref-select"></select>
+            </div>
+
+            <div class="pref-row">
+              <label for="accountPrefUnit" class="pref-label">Default Temperature Unit:</label>
+              <select id="accountPrefUnit" class="world-select pref-select">
+                <option value="C">Celsius (°C)</option>
+                <option value="F">Fahrenheit (°F)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Synced Favorites List -->
+          <div class="account-section">
+            <div class="sec-header-row">
+              <h4 class="account-section-title">Saved Cloud Favorites</h4>
+              <span class="fav-count-pill" id="accountFavCount">3 cities</span>
+            </div>
+            <div class="account-favs-list" id="accountFavsList">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Supabase Cloud Sync Configuration -->
+          <div class="account-section">
+            <button type="button" class="cloud-sync-toggle" id="toggleCloudSyncBtn">
+              <span>☁️ Cloud Sync (Supabase Credentials)</span>
+              <span id="cloudChevron">▼</span>
+            </button>
+            <div class="cloud-sync-drawer hidden" id="cloudSyncDrawer">
+              <p class="form-help">Enter your Supabase project credentials to enable multi-device synchronization:</p>
+              <div class="form-group">
+                <label for="sbUrlInput" class="form-label">Supabase URL</label>
+                <input type="text" id="sbUrlInput" placeholder="https://xyz.supabase.co" class="world-select" style="width:100%;">
+              </div>
+              <div class="form-group">
+                <label for="sbKeyInput" class="form-label">Supabase Anon Public Key</label>
+                <input type="text" id="sbKeyInput" placeholder="eyJhbGciOi..." class="world-select" style="width:100%;">
+              </div>
+              <button type="button" class="secondary-btn" id="saveSupabaseConfigBtn">Save Cloud Config</button>
+            </div>
+          </div>
+
+          <div class="account-actions-row">
+            <button type="button" class="primary-btn" id="saveAccountPrefsBtn">Save Preferences</button>
+            <button type="button" class="secondary-btn text-danger" id="accountSignOutBtn">Sign Out</button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
   </div>
 
   <!-- City Comparison Modal -->
@@ -564,7 +884,7 @@
           <span class="modal-icon" id="compareModalIcon"></span>
           <div>
             <h3 class="modal-title">Atmospheric Comparison Matrix</h3>
-            <p class="modal-desc-sub">Compare weather metrics between 2 to 3 cities side-by-side</p>
+            <p class="modal-desc-sub">Compare real weather metrics across 2 to 3 cities side-by-side</p>
           </div>
         </div>
         <button id="closeCompareBtn" class="modal-close-btn">&times;</button>
@@ -663,6 +983,7 @@
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="js/icons.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/api.js"></script>
   <script src="js/countries.js"></script>
   <script src="js/app.js"></script>

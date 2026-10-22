@@ -26,6 +26,8 @@
     worldSearch: '',
     worldRegion: 'All',
     worldSort: 'name-asc',
+    worldType: 'All', // 'All' | 'sovereign' | 'territory'
+    activeAuthView: 'signIn',
     leafletMap: null,
     mapMarkers: [],
     compareCities: ['London', 'Tokyo', 'New York']
@@ -161,7 +163,7 @@
     apiTestFeedback: document.getElementById('apiTestFeedback'),
     applySettingsBtn: document.getElementById('applySettingsBtn'),
 
-    // 100 Countries Global Weather Hub
+    // Worldwide Countries Global Weather Hub
     worldHubNavBtn: document.getElementById('worldHubNavBtn'),
     worldSection: document.getElementById('worldSection'),
     viewGridBtn: document.getElementById('viewGridBtn'),
@@ -170,6 +172,7 @@
     worldWeatherMap: document.getElementById('worldWeatherMap'),
     refreshWorldBtn: document.getElementById('refreshWorldBtn'),
     worldRefreshIcon: document.getElementById('worldRefreshIcon'),
+    worldSyncBtnText: document.getElementById('worldSyncBtnText'),
     statWarmest: document.getElementById('statWarmest'),
     statColdest: document.getElementById('statColdest'),
     statAverage: document.getElementById('statAverage'),
@@ -179,13 +182,98 @@
     worldSearchInput: document.getElementById('worldSearchInput'),
     clearWorldSearchBtn: document.getElementById('clearWorldSearchBtn'),
     worldRegionChips: document.getElementById('worldRegionChips'),
+    worldTypeSelect: document.getElementById('worldTypeSelect'),
     worldSortSelect: document.getElementById('worldSortSelect'),
     worldGrid: document.getElementById('worldGrid'),
     worldEmptyState: document.getElementById('worldEmptyState'),
     resetWorldFiltersBtn: document.getElementById('resetWorldFiltersBtn'),
+    progStatusBar: document.getElementById('progStatusBar'),
+    progStatusText: document.getElementById('progStatusText'),
+    fetchMoreBtn: document.getElementById('fetchMoreBtn'),
 
     // Canvas
-    atmosphereCanvas: document.getElementById('atmosphereCanvas')
+    atmosphereCanvas: document.getElementById('atmosphereCanvas'),
+
+    // User Authentication & Header Dropdown
+    userAuthWrap: document.getElementById('userAuthWrap'),
+    authNavBtn: document.getElementById('authNavBtn'),
+    authNavIcon: document.getElementById('authNavIcon'),
+    authNavText: document.getElementById('authNavText'),
+    userDropdownMenu: document.getElementById('userDropdownMenu'),
+    userAvatarSmall: document.getElementById('userAvatarSmall'),
+    userHeaderName: document.getElementById('userHeaderName'),
+    userHeaderEmail: document.getElementById('userHeaderEmail'),
+    dropAccountBtn: document.getElementById('dropAccountBtn'),
+    dropFavoritesBtn: document.getElementById('dropFavoritesBtn'),
+    dropFavCount: document.getElementById('dropFavCount'),
+    dropSignOutBtn: document.getElementById('dropSignOutBtn'),
+
+    // Split-Screen Authentication Modal
+    authModal: document.getElementById('authModal'),
+    closeAuthModalBtn: document.getElementById('closeAuthModalBtn'),
+    authFeedback: document.getElementById('authFeedback'),
+    viewSignIn: document.getElementById('viewSignIn'),
+    viewSignUp: document.getElementById('viewSignUp'),
+    viewForgot: document.getElementById('viewForgot'),
+    viewAccount: document.getElementById('viewAccount'),
+
+    // Auth Hero Live Preview
+    authHeroWeather: document.getElementById('authHeroWeather'),
+    authHeroIcon: document.getElementById('authHeroIcon'),
+    authPreviewCity: document.getElementById('authPreviewCity'),
+    authPreviewCond: document.getElementById('authPreviewCond'),
+    authPreviewTemp: document.getElementById('authPreviewTemp'),
+
+    // Sign In Form Elements
+    signInForm: document.getElementById('signInForm'),
+    loginEmail: document.getElementById('loginEmail'),
+    loginPassword: document.getElementById('loginPassword'),
+    loginRememberMe: document.getElementById('loginRememberMe'),
+    toggleLoginPwd: document.getElementById('toggleLoginPwd'),
+    signInSubmitBtn: document.getElementById('signInSubmitBtn'),
+    toForgotBtn: document.getElementById('toForgotBtn'),
+    toSignUpBtn: document.getElementById('toSignUpBtn'),
+
+    // Registration (Sign Up) Form Elements
+    signUpForm: document.getElementById('signUpForm'),
+    regName: document.getElementById('regName'),
+    regEmail: document.getElementById('regEmail'),
+    regPassword: document.getElementById('regPassword'),
+    toggleRegPwd: document.getElementById('toggleRegPwd'),
+    pwdStrengthBar: document.getElementById('pwdStrengthBar'),
+    pwdStrengthText: document.getElementById('pwdStrengthText'),
+    regConfirmPassword: document.getElementById('regConfirmPassword'),
+    regTerms: document.getElementById('regTerms'),
+    signUpSubmitBtn: document.getElementById('signUpSubmitBtn'),
+    toSignInFromRegBtn: document.getElementById('toSignInFromRegBtn'),
+
+    // Password Recovery Form Elements
+    forgotForm: document.getElementById('forgotForm'),
+    forgotEmail: document.getElementById('forgotEmail'),
+    forgotSubmitBtn: document.getElementById('forgotSubmitBtn'),
+    resetTokenBox: document.getElementById('resetTokenBox'),
+    resetTokenInput: document.getElementById('resetTokenInput'),
+    resetNewPwd: document.getElementById('resetNewPwd'),
+    applyNewPwdBtn: document.getElementById('applyNewPwdBtn'),
+    toSignInFromForgotBtn: document.getElementById('toSignInFromForgotBtn'),
+
+    // Account Profile & Preferences Elements
+    accountAvatarLarge: document.getElementById('accountAvatarLarge'),
+    accountUserName: document.getElementById('accountUserName'),
+    accountUserEmail: document.getElementById('accountUserEmail'),
+    accountAuthTag: document.getElementById('accountAuthTag'),
+    accountDefaultCity: document.getElementById('accountDefaultCity'),
+    accountPrefUnit: document.getElementById('accountPrefUnit'),
+    accountFavCount: document.getElementById('accountFavCount'),
+    accountFavsList: document.getElementById('accountFavsList'),
+    toggleCloudSyncBtn: document.getElementById('toggleCloudSyncBtn'),
+    cloudChevron: document.getElementById('cloudChevron'),
+    cloudSyncDrawer: document.getElementById('cloudSyncDrawer'),
+    sbUrlInput: document.getElementById('sbUrlInput'),
+    sbKeyInput: document.getElementById('sbKeyInput'),
+    saveSupabaseConfigBtn: document.getElementById('saveSupabaseConfigBtn'),
+    saveAccountPrefsBtn: document.getElementById('saveAccountPrefsBtn'),
+    accountSignOutBtn: document.getElementById('accountSignOutBtn')
   };
 
   /**
@@ -200,6 +288,7 @@
     initSettingsModal();
     initComparisonModal();
     initWorldWeather();
+    initAuth();
 
     // Check for saved location in localStorage
     const savedLoc = localStorage.getItem('sky_pulse_location');
@@ -242,6 +331,23 @@
     if (elements.intelOutdoorIcon) elements.intelOutdoorIcon.innerHTML = WeatherIcons.get('activity');
     if (elements.intelWindIcon) elements.intelWindIcon.innerHTML = WeatherIcons.get('wind');
     if (elements.intelTrendIcon) elements.intelTrendIcon.innerHTML = WeatherIcons.get('thermometer');
+
+    // Authentication icons
+    if (elements.authNavIcon) elements.authNavIcon.innerHTML = WeatherIcons.get('user');
+    const loginMail = document.getElementById('loginMailIcon');
+    if (loginMail) loginMail.innerHTML = WeatherIcons.get('mail');
+    const loginLock = document.getElementById('loginLockIcon');
+    if (loginLock) loginLock.innerHTML = WeatherIcons.get('lock');
+    const regUser = document.getElementById('regUserIcon');
+    if (regUser) regUser.innerHTML = WeatherIcons.get('user');
+    const regMail = document.getElementById('regMailIcon');
+    if (regMail) regMail.innerHTML = WeatherIcons.get('mail');
+    const regLock = document.getElementById('regLockIcon');
+    if (regLock) regLock.innerHTML = WeatherIcons.get('lock');
+    const regConfirmLock = document.getElementById('regConfirmLockIcon');
+    if (regConfirmLock) regConfirmLock.innerHTML = WeatherIcons.get('lock');
+    const forgotMail = document.getElementById('forgotMailIcon');
+    if (forgotMail) forgotMail.innerHTML = WeatherIcons.get('mail');
   }
 
   /**
@@ -368,8 +474,12 @@
     try {
       localStorage.setItem('sky_pulse_favorites', JSON.stringify(state.favorites));
     } catch (e) {}
+    if (typeof SkyPulseAuth !== 'undefined' && SkyPulseAuth.isAuthenticated()) {
+      SkyPulseAuth.updateProfile({ favorites: state.favorites });
+    }
     renderFavorites();
     updateFavoriteButtonState();
+    updateAuthProfileFavs();
   }
 
   function toggleCurrentFavorite() {
@@ -921,24 +1031,34 @@
    */
   function initUnitToggle() {
     elements.unitButtons.forEach(btn => {
-      if (btn.dataset.unit === state.unit) {
-        btn.classList.add('active');
-      } else {
-        btn.classList.remove('active');
-      }
-
+      btn.classList.toggle('active', btn.dataset.unit === state.unit);
       btn.addEventListener('click', () => {
-        elements.unitButtons.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.unit = btn.dataset.unit;
-        localStorage.setItem('weather_unit', state.unit);
-        updateTemperatures();
-        if (state.weatherData) {
-          renderMetrics(state.weatherData.current);
-          renderWeatherIntelligence(state.weatherData);
-        }
+        setUnit(btn.dataset.unit);
       });
     });
+  }
+
+  function setUnit(newUnit) {
+    if (!newUnit) return;
+    state.unit = newUnit;
+    localStorage.setItem('weather_unit', state.unit);
+    elements.unitButtons.forEach(b => {
+      b.classList.toggle('active', b.dataset.unit === state.unit);
+    });
+    if (elements.accountPrefUnit) {
+      elements.accountPrefUnit.value = state.unit;
+    }
+    updateTemperatures();
+    if (state.weatherData) {
+      renderMetrics(state.weatherData.current);
+      renderWeatherIntelligence(state.weatherData);
+    }
+    renderWorldWeatherGrid();
+    updateWorldStats();
+    if (state.leafletMap) updateMapMarkerPopups();
+    if (typeof SkyPulseAuth !== 'undefined' && SkyPulseAuth.isAuthenticated()) {
+      SkyPulseAuth.updateProfile({ preferredUnit: state.unit });
+    }
   }
 
   /**
@@ -1098,7 +1218,7 @@
       });
     }
 
-    // 100 Countries Region Filter Pills
+    // Worldwide Countries Region Filter Pills
     if (elements.worldRegionChips) {
       elements.worldRegionChips.addEventListener('click', e => {
         const chip = e.target.closest('.region-chip');
@@ -1111,7 +1231,15 @@
       });
     }
 
-    // 100 Countries Sort Selector
+    // Worldwide Countries Type Selector (Sovereign vs Territory)
+    if (elements.worldTypeSelect) {
+      elements.worldTypeSelect.addEventListener('change', e => {
+        state.worldType = e.target.value;
+        renderWorldWeatherGrid();
+      });
+    }
+
+    // Worldwide Countries Sort Selector
     if (elements.worldSortSelect) {
       elements.worldSortSelect.addEventListener('change', e => {
         state.worldSort = e.target.value;
@@ -1124,7 +1252,9 @@
       elements.resetWorldFiltersBtn.addEventListener('click', () => {
         state.worldSearch = '';
         state.worldRegion = 'All';
+        state.worldType = 'All';
         elements.worldSearchInput.value = '';
+        if (elements.worldTypeSelect) elements.worldTypeSelect.value = 'All';
         elements.clearWorldSearchBtn.classList.add('hidden');
         elements.worldRegionChips.querySelectorAll('.region-chip').forEach(c => {
           c.classList.toggle('active', c.dataset.region === 'All');
@@ -1578,7 +1708,7 @@
   }
 
   /**
-   * Initialize 100 Countries Global Hub
+   * Initialize Worldwide Countries Global Hub (225+ Nations & Territories)
    */
   async function initWorldWeather() {
     if (typeof WorldWeather === 'undefined') return;
@@ -1587,27 +1717,90 @@
     updateWorldStats();
     updateWorldDistribution();
 
-    // Trigger non-blocking background live sync
+    // Hook fetch more button for progressive batching
+    if (elements.fetchMoreBtn) {
+      elements.fetchMoreBtn.addEventListener('click', async () => {
+        await fetchNextWorldBatch(25);
+      });
+    }
+
+    // Hook global sync button
+    if (elements.refreshWorldBtn) {
+      elements.refreshWorldBtn.addEventListener('click', async () => {
+        await fetchNextWorldBatch(25, true);
+      });
+    }
+
+    // Non-blocking initial batch sync (first 25 countries)
     setTimeout(async () => {
       try {
-        await WorldWeather.fetchLiveBatch();
-        renderWorldWeatherGrid();
-        updateWorldStats();
-        updateWorldDistribution();
-        initOrUpdateWorldMap();
+        await fetchNextWorldBatch(25);
       } catch (err) {
-        console.warn('Background world weather sync noticed:', err);
+        console.warn('Initial worldwide weather sync noticed:', err);
       }
-    }, 1500);
+    }, 1200);
+  }
+
+  async function fetchNextWorldBatch(count = 25, isRefresh = false) {
+    if (typeof WorldWeather === 'undefined') return;
+    if (WorldWeather.isFetching()) return;
+
+    if (elements.fetchMoreBtn) {
+      elements.fetchMoreBtn.disabled = true;
+      elements.fetchMoreBtn.textContent = 'Syncing Live Telemetry...';
+    }
+    if (elements.refreshWorldBtn) {
+      elements.refreshWorldBtn.classList.add('syncing');
+      elements.refreshWorldBtn.disabled = true;
+    }
+    if (elements.worldSyncBtnText) {
+      elements.worldSyncBtnText.textContent = 'Syncing...';
+    }
+
+    try {
+      const res = await WorldWeather.fetchBatch(count);
+      renderWorldWeatherGrid();
+      updateWorldStats();
+      updateWorldDistribution();
+      initOrUpdateWorldMap();
+
+      if (elements.progStatusText) {
+        elements.progStatusText.textContent = `Synced ${res.totalLoaded} of ${res.totalCountries} worldwide nations and territories. Real data cached for 30 minutes.`;
+      }
+
+      if (elements.fetchMoreBtn) {
+        if (res.totalLoaded >= res.totalCountries) {
+          elements.fetchMoreBtn.textContent = 'All 227 Nations Synced ✓';
+          elements.fetchMoreBtn.disabled = true;
+        } else {
+          elements.fetchMoreBtn.textContent = `Sync Next 25 Countries (${res.totalLoaded}/${res.totalCountries})`;
+          elements.fetchMoreBtn.disabled = false;
+        }
+      }
+    } catch (e) {
+      console.warn('World weather batch fetch error:', e);
+      if (elements.fetchMoreBtn) {
+        elements.fetchMoreBtn.textContent = 'Retry Batch Sync';
+        elements.fetchMoreBtn.disabled = false;
+      }
+    } finally {
+      if (elements.refreshWorldBtn) {
+        elements.refreshWorldBtn.classList.remove('syncing');
+        elements.refreshWorldBtn.disabled = false;
+      }
+      if (elements.worldSyncBtnText) {
+        elements.worldSyncBtnText.textContent = 'Sync Live Data';
+      }
+    }
   }
 
   /**
-   * Render the 100 Countries Grid
+   * Render the Worldwide Countries Grid
    */
   function renderWorldWeatherGrid() {
     if (!elements.worldGrid || typeof WorldWeather === 'undefined') return;
 
-    const list = WorldWeather.filterAndSort(state.worldSearch, state.worldRegion, state.worldSort);
+    const list = WorldWeather.filterAndSort(state.worldSearch, state.worldRegion, state.worldSort, state.worldType);
     elements.worldGrid.innerHTML = '';
 
     if (list.length === 0) {
@@ -1623,7 +1816,7 @@
       card.className = 'country-card';
       card.setAttribute('role', 'button');
       card.setAttribute('tabindex', '0');
-      card.setAttribute('title', `Click to load full weather for ${c.city}, ${c.country}`);
+      card.setAttribute('title', `Click to load full weather for ${c.city}, ${c.country} (${c.iso3 || c.code})`);
 
       const formattedTemp = formatTemp(c.temp);
       const formattedWind = state.unit === 'F'
@@ -1631,6 +1824,7 @@
         : `${c.wind} km/h`;
 
       const iconSvg = typeof WeatherIcons !== 'undefined' ? WeatherIcons.get(c.icon) : '';
+      const typeTag = c.type === 'territory' ? 'Territory' : c.region;
 
       card.innerHTML = `
         <div class="country-card-top">
@@ -1638,10 +1832,10 @@
             <span class="country-flag-icon">${c.flag}</span>
             <div class="country-names">
               <span class="country-name-txt">${c.country}</span>
-              <span class="country-city-txt">${c.city}</span>
+              <span class="country-city-txt">${c.city} • ${c.iso3 || c.code}</span>
             </div>
           </div>
-          <span class="country-region-tag">${c.region}</span>
+          <span class="country-region-tag ${c.type === 'territory' ? 'is-territory' : ''}">${typeTag}</span>
         </div>
         <div class="country-weather-middle">
           <div class="country-temp-display">
@@ -1700,10 +1894,10 @@
       elements.statColdest.textContent = `${stats.coldest.flag} ${stats.coldest.city} (${formatTemp(stats.coldest.temp)}°${state.unit})`;
     }
     if (elements.statAverage) {
-      elements.statAverage.textContent = `${formatTemp(stats.average)}°${state.unit} Global Avg`;
+      elements.statAverage.textContent = `${formatTemp(stats.average)}°${state.unit} Planetary Avg`;
     }
     if (elements.statCount) {
-      elements.statCount.textContent = `${stats.totalCount} Nations`;
+      elements.statCount.textContent = `${stats.loadedCount} / ${stats.totalCount} Updated`;
     }
   }
 
@@ -1731,7 +1925,7 @@
   }
 
   /**
-   * Initialize or Update Leaflet World Map
+   * Initialize or Update Leaflet World Map (227 Countries)
    */
   function initOrUpdateWorldMap() {
     if (typeof L === 'undefined' || !elements.worldWeatherMap || typeof WorldWeather === 'undefined') return;
@@ -1760,9 +1954,10 @@
     state.mapMarkers.forEach(m => state.leafletMap.removeLayer(m));
     state.mapMarkers = [];
 
-    // Add markers for 100 countries
+    // Add markers for all countries
     countries.forEach(c => {
       const formattedTemp = formatTemp(c.temp);
+      const formattedWind = state.unit === 'F' ? `${Math.round(c.wind * 0.621371)} mph` : `${c.wind} km/h`;
       const icon = L.divIcon({
         className: 'custom-pin-wrapper',
         html: `<div class="custom-weather-pin">${c.flag} ${formattedTemp}°</div>`,
@@ -1774,9 +1969,9 @@
 
       const popupContent = `
         <div class="map-popup-card">
-          <div class="map-popup-header">${c.flag} ${c.city}, ${c.country}</div>
+          <div class="map-popup-header">${c.flag} ${c.city}, ${c.country} (${c.iso3 || c.code})</div>
           <div class="map-popup-temp">${formattedTemp}°${state.unit}</div>
-          <div class="map-popup-cond">${c.condition} • 💧 ${c.humidity}% • 💨 ${c.wind} km/h</div>
+          <div class="map-popup-cond">${c.condition} • 💧 ${c.humidity}% • 💨 ${formattedWind}</div>
           <button class="map-popup-focus-btn" onclick="window.SkyPulseFocus('${c.city}', '${c.country}', ${c.lat}, ${c.lon}, '${c.condition}')">Focus in Hero</button>
         </div>
       `;
@@ -1794,6 +1989,603 @@
   function updateMapMarkerPopups() {
     if (!state.leafletMap || state.mapMarkers.length === 0) return;
     initOrUpdateWorldMap();
+  }
+
+  /* ==========================================================================
+     AUTHENTICATION, PROFILE & ROUTING CONTROLLER
+     ========================================================================== */
+
+  function getInitials(nameOrEmail) {
+    if (!nameOrEmail) return 'US';
+    const parts = nameOrEmail.trim().split(/[\s@._-]+/);
+    if (parts.length >= 2 && parts[0] && parts[1]) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return nameOrEmail.slice(0, 2).toUpperCase();
+  }
+
+  function showAuthFeedback(msg, type = 'error') {
+    if (!elements.authFeedback) return;
+    elements.authFeedback.textContent = msg;
+    elements.authFeedback.className = `auth-feedback ${type}`;
+    elements.authFeedback.classList.remove('hidden');
+  }
+
+  function hideAuthFeedback() {
+    if (elements.authFeedback) {
+      elements.authFeedback.classList.add('hidden');
+      elements.authFeedback.textContent = '';
+    }
+  }
+
+  function checkPasswordStrength(password) {
+    if (!password) return { score: 0, text: 'Password strength: Empty', color: 'transparent', width: '0%' };
+    let score = 0;
+    if (password.length >= 6) score++;
+    if (password.length >= 10) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+
+    if (score <= 1) return { score: 1, text: 'Password strength: Weak', color: '#EF4444', width: '25%' };
+    if (score === 2 || score === 3) return { score: 2, text: 'Password strength: Fair', color: '#F59E0B', width: '55%' };
+    if (score === 4) return { score: 3, text: 'Password strength: Good', color: '#10B981', width: '80%' };
+    return { score: 4, text: 'Password strength: Strong (Optimal)', color: '#35D7FF', width: '100%' };
+  }
+
+  function updateAuthHeroPreview() {
+    if (elements.authHeroIcon) {
+      elements.authHeroIcon.innerHTML = state.weatherData 
+        ? WeatherIcons.get(state.weatherData.current.icon) 
+        : WeatherIcons.get('cloud-sun');
+    }
+    if (elements.authPreviewCity) {
+      elements.authPreviewCity.textContent = state.currentLocation 
+        ? `${state.currentLocation.name}, ${state.currentLocation.countryCode || state.currentLocation.country}`
+        : 'London, UK';
+    }
+    if (elements.authPreviewCond) {
+      elements.authPreviewCond.textContent = state.weatherData 
+        ? state.weatherData.current.condition 
+        : 'Real-time Telemetry';
+    }
+    if (elements.authPreviewTemp) {
+      const tempVal = state.weatherData ? formatTemp(state.weatherData.current.temp) : '18';
+      elements.authPreviewTemp.textContent = `${tempVal}°${state.unit}`;
+    }
+  }
+
+  function openAuthModal(view = 'signIn') {
+    if (!elements.authModal) return;
+    hideAuthFeedback();
+    updateAuthHeroPreview();
+    switchAuthView(view);
+    elements.authModal.classList.remove('hidden');
+  }
+
+  function closeAuthModal() {
+    if (!elements.authModal) return;
+    elements.authModal.classList.add('hidden');
+    hideAuthFeedback();
+    if (window.location.pathname !== '/') {
+      history.pushState(null, '', '/');
+    }
+  }
+
+  function switchAuthView(viewName) {
+    state.activeAuthView = viewName;
+    hideAuthFeedback();
+
+    const views = [
+      { name: 'signIn', el: elements.viewSignIn, path: '/login' },
+      { name: 'signUp', el: elements.viewSignUp, path: '/signup' },
+      { name: 'forgot', el: elements.viewForgot, path: '/forgot-password' },
+      { name: 'account', el: elements.viewAccount, path: '/account' }
+    ];
+
+    // If account requested but user is not logged in, divert to sign in with message
+    if (viewName === 'account' && (!SkyPulseAuth || !SkyPulseAuth.isAuthenticated())) {
+      viewName = 'signIn';
+      showAuthFeedback('Please sign in or create an account to access your personal profile.', 'info');
+    }
+
+    views.forEach(v => {
+      if (v.el) {
+        v.el.classList.toggle('hidden', v.name !== viewName);
+      }
+    });
+
+    const active = views.find(v => v.name === viewName);
+    if (active && window.location.pathname !== active.path) {
+      history.pushState(null, '', active.path);
+    }
+
+    if (viewName === 'account') {
+      populateAccountProfile();
+    }
+  }
+
+  function populateAccountCityOptions() {
+    if (!elements.accountDefaultCity || typeof WorldWeather === 'undefined') return;
+    const countries = WorldWeather.getAll();
+    elements.accountDefaultCity.innerHTML = '<option value="">-- Select Default Weather Hub --</option>' +
+      countries.map(c => `<option value="${c.city}, ${c.country}">${c.flag} ${c.city}, ${c.country}</option>`).join('');
+  }
+
+  function populateAccountProfile() {
+    if (typeof SkyPulseAuth === 'undefined') return;
+    const user = SkyPulseAuth.getUser();
+    if (!user) return;
+
+    const initials = getInitials(user.name || user.email);
+    if (elements.accountAvatarLarge) elements.accountAvatarLarge.textContent = initials;
+    if (elements.accountUserName) elements.accountUserName.textContent = user.name || 'SkyPulse Explorer';
+    if (elements.accountUserEmail) elements.accountUserEmail.textContent = user.email;
+    if (elements.accountAuthTag) {
+      elements.accountAuthTag.textContent = user.authProvider === 'supabase' 
+        ? 'Supabase Cloud Sync' 
+        : 'Encrypted Local Vault';
+    }
+
+    if (elements.accountPrefUnit) {
+      elements.accountPrefUnit.value = user.preferredUnit || state.unit;
+    }
+
+    if (elements.accountDefaultCity) {
+      elements.accountDefaultCity.value = user.defaultCity || '';
+    }
+
+    updateAuthProfileFavs();
+  }
+
+  function updateAuthProfileFavs() {
+    if (!elements.accountFavsList) return;
+    const favs = state.favorites || [];
+    if (elements.accountFavCount) elements.accountFavCount.textContent = `${favs.length} locations`;
+
+    if (favs.length === 0) {
+      elements.accountFavsList.innerHTML = '<span class="empty-fav-hint">No saved locations yet. Star any country or city!</span>';
+      return;
+    }
+
+    elements.accountFavsList.innerHTML = favs.map(f => `
+      <div class="fav-item-row">
+        <span class="fav-item-name" onclick="window.SkyPulseSearchFav('${f}')">⭐ ${f}</span>
+        <button class="fav-remove-btn" title="Remove" onclick="window.SkyPulseRemoveFav('${f}')">&times;</button>
+      </div>
+    `).join('');
+  }
+
+  window.SkyPulseSearchFav = function(name) {
+    closeAuthModal();
+    searchAndSelectFirst(name);
+  };
+
+  window.SkyPulseRemoveFav = function(name) {
+    const idx = state.favorites.indexOf(name);
+    if (idx >= 0) {
+      state.favorites.splice(idx, 1);
+      saveFavorites();
+      updateAuthProfileFavs();
+    }
+  };
+
+  function updateAuthUI(user) {
+    const isAuthenticated = !!user;
+
+    // Header nav button
+    if (elements.authNavBtn) {
+      if (isAuthenticated) {
+        const initials = getInitials(user.name || user.email);
+        elements.authNavText.textContent = user.name ? user.name.split(' ')[0] : 'Account';
+        elements.authNavIcon.innerHTML = `<span class="user-avatar-tiny">${initials}</span>`;
+        elements.authNavBtn.classList.add('is-authenticated');
+      } else {
+        elements.authNavText.textContent = 'Sign In';
+        elements.authNavIcon.innerHTML = WeatherIcons.get('user');
+        elements.authNavBtn.classList.remove('is-authenticated');
+      }
+    }
+
+    // Header dropdown
+    if (elements.userDropdownMenu) {
+      if (isAuthenticated) {
+        const initials = getInitials(user.name || user.email);
+        if (elements.userAvatarSmall) elements.userAvatarSmall.textContent = initials;
+        if (elements.userHeaderName) elements.userHeaderName.textContent = user.name || 'SkyPulse Explorer';
+        if (elements.userHeaderEmail) elements.userHeaderEmail.textContent = user.email;
+        if (elements.dropFavCount) elements.dropFavCount.textContent = state.favorites.length;
+      }
+    }
+
+    // Sync user preferences if provided
+    if (isAuthenticated) {
+      if (user.preferredUnit && user.preferredUnit !== state.unit) {
+        setUnit(user.preferredUnit);
+      }
+      if (user.favorites && Array.isArray(user.favorites) && user.favorites.length > 0) {
+        // Merge favorites
+        user.favorites.forEach(f => {
+          if (!state.favorites.includes(f)) state.favorites.push(f);
+        });
+        saveFavorites();
+      }
+    }
+  }
+
+  function handleSpaRouting() {
+    const path = window.location.pathname.toLowerCase();
+    if (path === '/login') {
+      openAuthModal('signIn');
+    } else if (path === '/signup') {
+      openAuthModal('signUp');
+    } else if (path === '/forgot-password') {
+      openAuthModal('forgot');
+    } else if (path === '/account') {
+      openAuthModal('account');
+    }
+  }
+
+  /**
+   * Main Auth Initialization
+   */
+  async function initAuth() {
+    if (typeof SkyPulseAuth === 'undefined') return;
+
+    // Listen to Auth State
+    SkyPulseAuth.onAuthStateChange((event, user) => {
+      updateAuthUI(user);
+    });
+
+    // Initialize vault / session
+    await SkyPulseAuth.init();
+
+    // Populate country dropdown for default hub
+    populateAccountCityOptions();
+
+    // Setup event handlers
+    initAuthEventHandlers();
+
+    // Handle initial SPA route
+    handleSpaRouting();
+
+    // Popstate navigation listener
+    window.addEventListener('popstate', () => {
+      const path = window.location.pathname.toLowerCase();
+      if (path === '/login') openAuthModal('signIn');
+      else if (path === '/signup') openAuthModal('signUp');
+      else if (path === '/forgot-password') openAuthModal('forgot');
+      else if (path === '/account') openAuthModal('account');
+      else if (elements.authModal && !elements.authModal.classList.contains('hidden')) {
+        closeAuthModal();
+      }
+    });
+  }
+
+  function initAuthEventHandlers() {
+    // 1. Header Auth Nav Button
+    if (elements.authNavBtn) {
+      elements.authNavBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (SkyPulseAuth.isAuthenticated()) {
+          elements.userDropdownMenu.classList.toggle('hidden');
+        } else {
+          openAuthModal('signIn');
+        }
+      });
+    }
+
+    // Close user dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (elements.userDropdownMenu && !elements.userDropdownMenu.classList.contains('hidden')) {
+        if (!e.target.closest('#userAuthWrap')) {
+          elements.userDropdownMenu.classList.add('hidden');
+        }
+      }
+    });
+
+    // Dropdown items
+    if (elements.dropAccountBtn) {
+      elements.dropAccountBtn.addEventListener('click', () => {
+        elements.userDropdownMenu.classList.add('hidden');
+        openAuthModal('account');
+      });
+    }
+
+    if (elements.dropFavoritesBtn) {
+      elements.dropFavoritesBtn.addEventListener('click', () => {
+        elements.userDropdownMenu.classList.add('hidden');
+        openAuthModal('account');
+      });
+    }
+
+    if (elements.dropSignOutBtn) {
+      elements.dropSignOutBtn.addEventListener('click', async () => {
+        elements.userDropdownMenu.classList.add('hidden');
+        await SkyPulseAuth.signOut();
+        closeAuthModal();
+      });
+    }
+
+    // Modal Close Button
+    if (elements.closeAuthModalBtn) {
+      elements.closeAuthModalBtn.addEventListener('click', closeAuthModal);
+    }
+
+    // Backdrop click
+    if (elements.authModal) {
+      elements.authModal.addEventListener('click', (e) => {
+        if (e.target === elements.authModal) closeAuthModal();
+      });
+    }
+
+    // View Navigation Switches
+    if (elements.toSignUpBtn) {
+      elements.toSignUpBtn.addEventListener('click', () => switchAuthView('signUp'));
+    }
+    if (elements.toSignInFromRegBtn) {
+      elements.toSignInFromRegBtn.addEventListener('click', () => switchAuthView('signIn'));
+    }
+    if (elements.toForgotBtn) {
+      elements.toForgotBtn.addEventListener('click', () => switchAuthView('forgot'));
+    }
+    if (elements.toSignInFromForgotBtn) {
+      elements.toSignInFromForgotBtn.addEventListener('click', () => switchAuthView('signIn'));
+    }
+
+    // Show/Hide Password toggles
+    if (elements.toggleLoginPwd && elements.loginPassword) {
+      elements.toggleLoginPwd.addEventListener('click', () => {
+        const isPass = elements.loginPassword.type === 'password';
+        elements.loginPassword.type = isPass ? 'text' : 'password';
+        elements.toggleLoginPwd.textContent = isPass ? '🙈' : '👁️';
+      });
+    }
+
+    if (elements.toggleRegPwd && elements.regPassword) {
+      elements.toggleRegPwd.addEventListener('click', () => {
+        const isPass = elements.regPassword.type === 'password';
+        elements.regPassword.type = isPass ? 'text' : 'password';
+        elements.toggleRegPwd.textContent = isPass ? '🙈' : '👁️';
+      });
+    }
+
+    // Password Strength Meter
+    if (elements.regPassword && elements.pwdStrengthBar && elements.pwdStrengthText) {
+      elements.regPassword.addEventListener('input', () => {
+        const val = elements.regPassword.value;
+        const res = checkPasswordStrength(val);
+        elements.pwdStrengthBar.style.width = res.width;
+        elements.pwdStrengthBar.style.backgroundColor = res.color;
+        elements.pwdStrengthText.textContent = res.text;
+      });
+    }
+
+    // Form: Sign In
+    if (elements.signInForm) {
+      elements.signInForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAuthFeedback();
+
+        const email = elements.loginEmail.value.trim();
+        const pwd = elements.loginPassword.value;
+        const rememberMe = elements.loginRememberMe ? elements.loginRememberMe.checked : true;
+
+        if (!email || !pwd) {
+          showAuthFeedback('Please enter both your email address and password.', 'error');
+          return;
+        }
+
+        elements.signInSubmitBtn.disabled = true;
+        elements.signInSubmitBtn.innerHTML = '<span class="btn-text">Verifying Credentials...</span>';
+
+        try {
+          const res = await SkyPulseAuth.signIn(email, pwd, rememberMe);
+          if (res.error) {
+            showAuthFeedback(res.error, 'error');
+          } else {
+            showAuthFeedback(`Welcome back, ${res.user.name || 'Explorer'}! Synchronizing telemetry...`, 'success');
+            setTimeout(() => {
+              closeAuthModal();
+            }, 800);
+          }
+        } catch (err) {
+          showAuthFeedback(err.message || 'Authentication failed. Please verify credentials.', 'error');
+        } finally {
+          elements.signInSubmitBtn.disabled = false;
+          elements.signInSubmitBtn.innerHTML = '<span class="btn-text">Sign In</span>';
+        }
+      });
+    }
+
+    // Form: Sign Up (Registration)
+    if (elements.signUpForm) {
+      elements.signUpForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAuthFeedback();
+
+        const name = elements.regName.value.trim();
+        const email = elements.regEmail.value.trim();
+        const pwd = elements.regPassword.value;
+        const confirmPwd = elements.regConfirmPassword.value;
+        const terms = elements.regTerms ? elements.regTerms.checked : true;
+
+        if (!name || !email || !pwd) {
+          showAuthFeedback('All fields are required.', 'error');
+          return;
+        }
+
+        if (pwd.length < 6) {
+          showAuthFeedback('Password must be at least 6 characters long.', 'error');
+          return;
+        }
+
+        if (pwd !== confirmPwd) {
+          showAuthFeedback('Passwords do not match. Please re-enter.', 'error');
+          return;
+        }
+
+        if (!terms) {
+          showAuthFeedback('Please accept the SkyPulse terms and telemetry policy.', 'error');
+          return;
+        }
+
+        elements.signUpSubmitBtn.disabled = true;
+        elements.signUpSubmitBtn.innerHTML = '<span class="btn-text">Creating Encrypted Vault...</span>';
+
+        try {
+          const res = await SkyPulseAuth.signUp(name, email, pwd);
+          if (res.error) {
+            showAuthFeedback(res.error, 'error');
+          } else {
+            showAuthFeedback('Account created successfully! Welcome to SkyPulse 3.0.', 'success');
+            setTimeout(() => {
+              closeAuthModal();
+            }, 900);
+          }
+        } catch (err) {
+          showAuthFeedback(err.message || 'Registration failed.', 'error');
+        } finally {
+          elements.signUpSubmitBtn.disabled = false;
+          elements.signUpSubmitBtn.innerHTML = '<span class="btn-text">Create Account</span>';
+        }
+      });
+    }
+
+    // Form: Forgot Password Request
+    if (elements.forgotForm) {
+      elements.forgotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        hideAuthFeedback();
+
+        const email = elements.forgotEmail.value.trim();
+        if (!email) {
+          showAuthFeedback('Please provide your registered email address.', 'error');
+          return;
+        }
+
+        elements.forgotSubmitBtn.disabled = true;
+        elements.forgotSubmitBtn.innerHTML = '<span class="btn-text">Generating Recovery Token...</span>';
+
+        try {
+          const res = await SkyPulseAuth.requestPasswordReset(email);
+          if (res.error) {
+            showAuthFeedback(res.error, 'error');
+          } else {
+            showAuthFeedback(res.message || 'Recovery code generated! Enter your new password below.', 'success');
+            if (elements.resetTokenBox) {
+              elements.resetTokenBox.classList.remove('hidden');
+              if (res.token && elements.resetTokenInput) {
+                elements.resetTokenInput.value = res.token;
+              }
+            }
+          }
+        } catch (err) {
+          showAuthFeedback(err.message || 'Could not process password recovery.', 'error');
+        } finally {
+          elements.forgotSubmitBtn.disabled = false;
+          elements.forgotSubmitBtn.innerHTML = '<span class="btn-text">Send Recovery Instructions</span>';
+        }
+      });
+    }
+
+    // Apply New Password with Recovery Token
+    if (elements.applyNewPwdBtn) {
+      elements.applyNewPwdBtn.addEventListener('click', async () => {
+        hideAuthFeedback();
+        const token = elements.resetTokenInput ? elements.resetTokenInput.value.trim() : '';
+        const newPwd = elements.resetNewPwd ? elements.resetNewPwd.value : '';
+
+        if (!token || !newPwd) {
+          showAuthFeedback('Please provide both the verification token and your new password.', 'error');
+          return;
+        }
+
+        if (newPwd.length < 6) {
+          showAuthFeedback('New password must be at least 6 characters long.', 'error');
+          return;
+        }
+
+        elements.applyNewPwdBtn.disabled = true;
+        elements.applyNewPwdBtn.textContent = 'Updating Vault...';
+
+        try {
+          const res = await SkyPulseAuth.resetPassword(token, newPwd);
+          if (res.error) {
+            showAuthFeedback(res.error, 'error');
+          } else {
+            showAuthFeedback('Password updated successfully! Please sign in with your new credentials.', 'success');
+            setTimeout(() => {
+              switchAuthView('signIn');
+            }, 1200);
+          }
+        } catch (err) {
+          showAuthFeedback(err.message || 'Failed to update password.', 'error');
+        } finally {
+          elements.applyNewPwdBtn.disabled = false;
+          elements.applyNewPwdBtn.textContent = 'Update Password';
+        }
+      });
+    }
+
+    // Supabase Cloud Sync Accordion Toggle
+    if (elements.toggleCloudSyncBtn && elements.cloudSyncDrawer) {
+      elements.toggleCloudSyncBtn.addEventListener('click', () => {
+        elements.cloudSyncDrawer.classList.toggle('hidden');
+        if (elements.cloudChevron) {
+          elements.cloudChevron.textContent = elements.cloudSyncDrawer.classList.contains('hidden') ? '▼' : '▲';
+        }
+        if (!elements.cloudSyncDrawer.classList.contains('hidden')) {
+          const cfg = SkyPulseAuth.getSupabaseConfig();
+          if (cfg) {
+            if (elements.sbUrlInput) elements.sbUrlInput.value = cfg.url || '';
+            if (elements.sbKeyInput) elements.sbKeyInput.value = cfg.anonKey || '';
+          }
+        }
+      });
+    }
+
+    // Save Supabase Configuration
+    if (elements.saveSupabaseConfigBtn) {
+      elements.saveSupabaseConfigBtn.addEventListener('click', () => {
+        const url = elements.sbUrlInput ? elements.sbUrlInput.value.trim() : '';
+        const key = elements.sbKeyInput ? elements.sbKeyInput.value.trim() : '';
+        if (!url || !key) {
+          showAuthFeedback('Please provide both Supabase Project URL and Anon Public Key.', 'error');
+          return;
+        }
+        SkyPulseAuth.setSupabaseConfig(url, key);
+        showAuthFeedback('Supabase configuration saved! Authenticate or refresh to link with cloud database.', 'success');
+      });
+    }
+
+    // Save Account Preferences (Default Hub & Unit)
+    if (elements.saveAccountPrefsBtn) {
+      elements.saveAccountPrefsBtn.addEventListener('click', async () => {
+        const defaultCity = elements.accountDefaultCity ? elements.accountDefaultCity.value : '';
+        const prefUnit = elements.accountPrefUnit ? elements.accountPrefUnit.value : state.unit;
+
+        if (prefUnit !== state.unit) {
+          setUnit(prefUnit);
+        }
+
+        const updates = { defaultCity, preferredUnit: prefUnit };
+        await SkyPulseAuth.updateProfile(updates);
+        showAuthFeedback('Preferences updated and saved to your profile!', 'success');
+
+        if (defaultCity) {
+          searchAndSelectFirst(defaultCity);
+        }
+      });
+    }
+
+    // Account Profile Sign Out
+    if (elements.accountSignOutBtn) {
+      elements.accountSignOutBtn.addEventListener('click', async () => {
+        await SkyPulseAuth.signOut();
+        closeAuthModal();
+      });
+    }
   }
 
   // Global helper for Leaflet popups
