@@ -191,8 +191,10 @@
     progStatusText: document.getElementById('progStatusText'),
     fetchMoreBtn: document.getElementById('fetchMoreBtn'),
 
-    // Canvas
+    // Canvas & Dynamic Climate Backdrop
     atmosphereCanvas: document.getElementById('atmosphereCanvas'),
+    backdropLayerA: document.getElementById('backdropLayerA'),
+    backdropLayerB: document.getElementById('backdropLayerB'),
 
     // User Authentication & Header Dropdown
     userAuthWrap: document.getElementById('userAuthWrap'),
@@ -231,6 +233,7 @@
     loginRememberMe: document.getElementById('loginRememberMe'),
     toggleLoginPwd: document.getElementById('toggleLoginPwd'),
     signInSubmitBtn: document.getElementById('signInSubmitBtn'),
+    guestContinueBtn: document.getElementById('guestContinueBtn'),
     toForgotBtn: document.getElementById('toForgotBtn'),
     toSignUpBtn: document.getElementById('toSignUpBtn'),
 
@@ -245,6 +248,7 @@
     regConfirmPassword: document.getElementById('regConfirmPassword'),
     regTerms: document.getElementById('regTerms'),
     signUpSubmitBtn: document.getElementById('signUpSubmitBtn'),
+    guestContinueRegBtn: document.getElementById('guestContinueRegBtn'),
     toSignInFromRegBtn: document.getElementById('toSignInFromRegBtn'),
 
     // Password Recovery Form Elements
@@ -289,6 +293,7 @@
     initComparisonModal();
     initWorldWeather();
     initAuth();
+    preloadClimateImages();
 
     // Check for saved location in localStorage
     const savedLoc = localStorage.getItem('sky_pulse_location');
@@ -561,8 +566,9 @@
    * Render the Weather Dashboard with received data
    */
   function renderWeatherDashboard(data) {
-    // 1. Dynamic Theme update
-    document.body.className = `theme-${data.current.category || 'cloudy'}`;
+    // 1. Dynamic Climate Backdrop & Theme update
+    const climateCategory = data.current.climate || data.current.category || 'sunny';
+    setClimateBackground(climateCategory, data);
 
     // 2. Location & Date
     elements.cityName.textContent = data.city;
@@ -1600,46 +1606,58 @@
     elements.forecastProviderPill.textContent = WeatherAPI.getProvider() === 'openweathermap' ? 'OWM Forecast' : 'Open-Meteo 7-Day';
   }
 
+  let loadingDebounceTimer = null;
+
   function showLoading(show, weatherHint) {
     if (show) {
-      let hint = weatherHint;
-      if (!hint && state.weatherData && state.weatherData.current) {
-        hint = state.weatherData.current.category || state.weatherData.current.condition || state.weatherData.current.icon;
-      }
+      clearTimeout(loadingDebounceTimer);
+      // Fast threshold: only display loading symbol if network fetch takes longer than 80ms
+      // Cached data returns in <1ms and completes immediately without any loading delay!
+      loadingDebounceTimer = setTimeout(() => {
+        let hint = weatherHint;
+        if (!hint && state.weatherData && state.weatherData.current) {
+          hint = state.weatherData.current.climate || state.weatherData.current.category || state.weatherData.current.condition || state.weatherData.current.icon;
+        }
 
-      const category = resolveLoaderCategory(hint);
+        const category = resolveLoaderCategory(hint);
 
-      // Inject the weather-adaptive dynamic SVG icon (e.g. rotating Sun, falling Raindrops, Snowflake, etc.)
-      if (elements.weatherLoaderSymbol && typeof WeatherIcons !== 'undefined' && WeatherIcons.getLoader) {
-        elements.weatherLoaderSymbol.innerHTML = WeatherIcons.getLoader(category);
-      }
+        // Inject the weather-adaptive dynamic SVG icon (e.g. rotating Sun, falling Raindrops, Snowflake, etc.)
+        if (elements.weatherLoaderSymbol && typeof WeatherIcons !== 'undefined' && WeatherIcons.getLoader) {
+          elements.weatherLoaderSymbol.innerHTML = WeatherIcons.getLoader(category);
+        }
 
-      // Update the glowing ambient halo theme
-      if (elements.weatherLoaderWrapper) {
-        elements.weatherLoaderWrapper.className = `weather-loader-wrapper theme-${category}`;
-      }
+        // Update the glowing ambient halo theme
+        if (elements.weatherLoaderWrapper) {
+          elements.weatherLoaderWrapper.className = `weather-loader-wrapper theme-${category}`;
+        }
 
-      // Update descriptive atmospheric status text
-      const meta = getLoaderMeta(category);
-      if (elements.loadingTitle) elements.loadingTitle.textContent = meta.title;
-      if (elements.loadingSubtext) elements.loadingSubtext.textContent = meta.sub;
+        // Update descriptive atmospheric status text
+        const meta = getLoaderMeta(category);
+        if (elements.loadingTitle) elements.loadingTitle.textContent = meta.title;
+        if (elements.loadingSubtext) elements.loadingSubtext.textContent = meta.sub;
 
-      elements.loadingState.classList.remove('hidden');
-      elements.mainDashboard.style.opacity = '0.35';
-      elements.mainDashboard.style.pointerEvents = 'none';
+        if (elements.loadingState) elements.loadingState.classList.remove('hidden');
+        if (elements.mainDashboard) {
+          elements.mainDashboard.style.opacity = '0.65';
+          elements.mainDashboard.style.pointerEvents = 'none';
+        }
+      }, 80);
     } else {
-      elements.loadingState.classList.add('hidden');
-      elements.mainDashboard.style.opacity = '1';
-      elements.mainDashboard.style.pointerEvents = 'auto';
+      clearTimeout(loadingDebounceTimer);
+      if (elements.loadingState) elements.loadingState.classList.add('hidden');
+      if (elements.mainDashboard) {
+        elements.mainDashboard.style.opacity = '1';
+        elements.mainDashboard.style.pointerEvents = 'auto';
+      }
     }
   }
 
   function resolveLoaderCategory(hint) {
     if (!hint) return 'sunny';
     const str = String(hint).toLowerCase();
+    if (str.includes('cold') || str.includes('snow') || str.includes('sleet') || str.includes('hail') || str.includes('freez') || str.includes('ice')) return 'snowy';
     if (str.includes('rain') || str.includes('drizzle') || str.includes('shower')) return 'rainy';
     if (str.includes('storm') || str.includes('thunder') || str.includes('lightning')) return 'stormy';
-    if (str.includes('snow') || str.includes('sleet') || str.includes('hail') || str.includes('freez')) return 'snowy';
     if (str.includes('fog') || str.includes('mist') || str.includes('rime') || str.includes('haze')) return 'foggy';
     if (str.includes('night') || str.includes('moon')) return 'night';
     if (str.includes('wind') || str.includes('breeze')) return 'windy';
@@ -1989,6 +2007,106 @@
   function updateMapMarkerPopups() {
     if (!state.leafletMap || state.mapMarkers.length === 0) return;
     initOrUpdateWorldMap();
+  }
+
+  /* ==========================================================================
+     DYNAMIC ATMOSPHERIC CLIMATE BACKDROP IMAGE SYSTEM
+     Generates climate-specific visual imagery (Snowforest for cold, Luminous Sun for sunny, etc.)
+     ========================================================================== */
+
+  const CLIMATE_BACKDROPS = {
+    cold: {
+      url: 'https://images.unsplash.com/photo-1483921020237-2ff51e8e4b22?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #1e3a8a 0%, #0c1e38 60%, #070B16 100%)',
+      theme: 'theme-snowy',
+      title: 'Frosted Snow Forest & Cold Atmosphere'
+    },
+    snowy: {
+      url: 'https://images.unsplash.com/photo-1517299321609-52687d1bc55a?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #1e3a8a 0%, #0f172a 60%, #070B16 100%)',
+      theme: 'theme-snowy',
+      title: 'Snowy Alpine Landscape'
+    },
+    sunny: {
+      url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 15%, #b45309 0%, #1e3a8a 50%, #070B16 100%)',
+      theme: 'theme-sunny',
+      title: 'Radiant Sunlit Horizon'
+    },
+    rainy: {
+      url: 'https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #0369a1 0%, #0c4a6e 55%, #070B16 100%)',
+      theme: 'theme-rainy',
+      title: 'Atmospheric Raindrops on Glass'
+    },
+    stormy: {
+      url: 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #581c87 0%, #1e1b4b 60%, #070B16 100%)',
+      theme: 'theme-stormy',
+      title: 'Dramatic Violet Thunderstorm Shelf'
+    },
+    cloudy: {
+      url: 'https://images.unsplash.com/photo-1534088568595-a066f410bcda?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #334155 0%, #1e293b 60%, #070B16 100%)',
+      theme: 'theme-cloudy',
+      title: 'Rolling Overcast Cloudscape'
+    },
+    foggy: {
+      url: 'https://images.unsplash.com/photo-1487621167305-5d248087c724?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 20%, #475569 0%, #1e293b 60%, #070B16 100%)',
+      theme: 'theme-foggy',
+      title: 'Ethereal Misty Pine Forest'
+    },
+    night: {
+      url: 'https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?auto=format&fit=crop&w=1920&q=80',
+      fallbackGrad: 'radial-gradient(ellipse at 50% 15%, #312e81 0%, #0f172a 65%, #070B16 100%)',
+      theme: 'theme-night',
+      title: 'Nocturnal Starlit Galaxy'
+    }
+  };
+
+  let activeBackdrop = 'A';
+
+  function setClimateBackground(climateCategory, weatherData) {
+    const key = String(climateCategory || 'sunny').toLowerCase();
+    const config = CLIMATE_BACKDROPS[key] || CLIMATE_BACKDROPS.sunny;
+
+    const layerA = elements.backdropLayerA;
+    const layerB = elements.backdropLayerB;
+
+    if (!layerA || !layerB) return;
+
+    const nextLayer = activeBackdrop === 'A' ? layerB : layerA;
+    const prevLayer = activeBackdrop === 'A' ? layerA : layerB;
+
+    nextLayer.style.backgroundImage = `url("${config.url}"), ${config.fallbackGrad}`;
+    nextLayer.classList.add('active');
+    prevLayer.classList.remove('active');
+
+    activeBackdrop = activeBackdrop === 'A' ? 'B' : 'A';
+    document.body.className = config.theme;
+  }
+
+  function preloadClimateImages() {
+    Object.values(CLIMATE_BACKDROPS).forEach(cfg => {
+      const img = new Image();
+      img.src = cfg.url;
+    });
+  }
+
+  function showGuestToast() {
+    const existing = document.querySelector('.guest-toast-notice');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'guest-toast-notice';
+    toast.innerHTML = '<span>👋</span><span>Continuing as Guest Explorer. You can sign in anytime to sync your favorites.</span>';
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 20);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 400);
+    }, 3800);
   }
 
   /* ==========================================================================
@@ -2361,95 +2479,114 @@
       });
     }
 
-    // Form: Sign In
-    if (elements.signInForm) {
-      elements.signInForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        hideAuthFeedback();
+    // 1. Sign In Handlers (Attached to Form submit, Button click & Enter key)
+    async function handleSignIn(e) {
+      if (e) e.preventDefault();
+      hideAuthFeedback();
 
-        const email = elements.loginEmail.value.trim();
-        const pwd = elements.loginPassword.value;
-        const rememberMe = elements.loginRememberMe ? elements.loginRememberMe.checked : true;
+      const email = elements.loginEmail ? elements.loginEmail.value.trim() : '';
+      const pwd = elements.loginPassword ? elements.loginPassword.value : '';
+      const rememberMe = elements.loginRememberMe ? elements.loginRememberMe.checked : true;
 
-        if (!email || !pwd) {
-          showAuthFeedback('Please enter both your email address and password.', 'error');
-          return;
-        }
+      if (!email || !pwd) {
+        showAuthFeedback('Please enter both your email address and password.', 'error');
+        return;
+      }
 
+      if (elements.signInSubmitBtn) {
         elements.signInSubmitBtn.disabled = true;
         elements.signInSubmitBtn.innerHTML = '<span class="btn-text">Verifying Credentials...</span>';
+      }
 
-        try {
-          const res = await SkyPulseAuth.signIn(email, pwd, rememberMe);
-          if (res.error) {
-            showAuthFeedback(res.error, 'error');
-          } else {
-            showAuthFeedback(`Welcome back, ${res.user.name || 'Explorer'}! Synchronizing telemetry...`, 'success');
-            setTimeout(() => {
-              closeAuthModal();
-            }, 800);
-          }
-        } catch (err) {
-          showAuthFeedback(err.message || 'Authentication failed. Please verify credentials.', 'error');
-        } finally {
+      try {
+        const user = await SkyPulseAuth.signIn(email, pwd, rememberMe);
+        const displayName = (user && (user.name || user.email)) || 'Explorer';
+        showAuthFeedback(`Welcome back, ${displayName}! Synchronizing telemetry...`, 'success');
+        setTimeout(() => {
+          closeAuthModal();
+        }, 700);
+      } catch (err) {
+        showAuthFeedback(err.message || 'Authentication failed. Please check credentials or register.', 'error');
+      } finally {
+        if (elements.signInSubmitBtn) {
           elements.signInSubmitBtn.disabled = false;
           elements.signInSubmitBtn.innerHTML = '<span class="btn-text">Sign In</span>';
         }
-      });
+      }
     }
 
-    // Form: Sign Up (Registration)
-    if (elements.signUpForm) {
-      elements.signUpForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        hideAuthFeedback();
+    if (elements.signInForm) elements.signInForm.addEventListener('submit', handleSignIn);
+    if (elements.signInSubmitBtn) elements.signInSubmitBtn.addEventListener('click', handleSignIn);
 
-        const name = elements.regName.value.trim();
-        const email = elements.regEmail.value.trim();
-        const pwd = elements.regPassword.value;
-        const confirmPwd = elements.regConfirmPassword.value;
-        const terms = elements.regTerms ? elements.regTerms.checked : true;
+    // 2. Registration (Sign Up) Handlers (Attached to Form submit, Button click & Enter key)
+    async function handleSignUp(e) {
+      if (e) e.preventDefault();
+      hideAuthFeedback();
 
-        if (!name || !email || !pwd) {
-          showAuthFeedback('All fields are required.', 'error');
-          return;
-        }
+      const name = elements.regName ? elements.regName.value.trim() : '';
+      const email = elements.regEmail ? elements.regEmail.value.trim() : '';
+      const pwd = elements.regPassword ? elements.regPassword.value : '';
+      const confirmPwd = elements.regConfirmPassword ? elements.regConfirmPassword.value : '';
+      const terms = elements.regTerms ? elements.regTerms.checked : true;
 
-        if (pwd.length < 6) {
-          showAuthFeedback('Password must be at least 6 characters long.', 'error');
-          return;
-        }
+      if (!name || !email || !pwd) {
+        showAuthFeedback('Please fill out all required fields: Full Name, Email, and Password.', 'error');
+        return;
+      }
 
-        if (pwd !== confirmPwd) {
-          showAuthFeedback('Passwords do not match. Please re-enter.', 'error');
-          return;
-        }
+      if (pwd.length < 6) {
+        showAuthFeedback('Password must be at least 6 characters long.', 'error');
+        return;
+      }
 
-        if (!terms) {
-          showAuthFeedback('Please accept the SkyPulse terms and telemetry policy.', 'error');
-          return;
-        }
+      if (pwd !== confirmPwd) {
+        showAuthFeedback('Passwords do not match. Please re-enter your password.', 'error');
+        return;
+      }
 
+      if (!terms) {
+        showAuthFeedback('Please accept the SkyPulse terms and telemetry policy.', 'error');
+        return;
+      }
+
+      if (elements.signUpSubmitBtn) {
         elements.signUpSubmitBtn.disabled = true;
         elements.signUpSubmitBtn.innerHTML = '<span class="btn-text">Creating Encrypted Vault...</span>';
+      }
 
-        try {
-          const res = await SkyPulseAuth.signUp(name, email, pwd);
-          if (res.error) {
-            showAuthFeedback(res.error, 'error');
-          } else {
-            showAuthFeedback('Account created successfully! Welcome to SkyPulse 3.0.', 'success');
-            setTimeout(() => {
-              closeAuthModal();
-            }, 900);
-          }
-        } catch (err) {
-          showAuthFeedback(err.message || 'Registration failed.', 'error');
-        } finally {
+      try {
+        const user = await SkyPulseAuth.signUp(name, email, pwd);
+        const displayName = (user && (user.name || user.email)) || name;
+        showAuthFeedback(`Account created successfully! Welcome to SkyPulse 3.0, ${displayName}.`, 'success');
+        if (elements.loginEmail) elements.loginEmail.value = email;
+        setTimeout(() => {
+          closeAuthModal();
+        }, 800);
+      } catch (err) {
+        showAuthFeedback(err.message || 'Registration failed.', 'error');
+      } finally {
+        if (elements.signUpSubmitBtn) {
           elements.signUpSubmitBtn.disabled = false;
           elements.signUpSubmitBtn.innerHTML = '<span class="btn-text">Create Account</span>';
         }
-      });
+      }
+    }
+
+    if (elements.signUpForm) elements.signUpForm.addEventListener('submit', handleSignUp);
+    if (elements.signUpSubmitBtn) elements.signUpSubmitBtn.addEventListener('click', handleSignUp);
+
+    // 3. Continue as Guest Handlers
+    function handleContinueAsGuest(e) {
+      if (e) e.preventDefault();
+      closeAuthModal();
+      showGuestToast();
+    }
+
+    if (elements.guestContinueBtn) {
+      elements.guestContinueBtn.addEventListener('click', handleContinueAsGuest);
+    }
+    if (elements.guestContinueRegBtn) {
+      elements.guestContinueRegBtn.addEventListener('click', handleContinueAsGuest);
     }
 
     // Form: Forgot Password Request

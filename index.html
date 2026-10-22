@@ -16,6 +16,13 @@
 </head>
 <body class="theme-sunny">
 
+  <!-- Dynamic Atmospheric Climate Backdrop Image System -->
+  <div id="dynamicWeatherBackdrop" class="weather-backdrop" aria-hidden="true">
+    <div class="backdrop-layer backdrop-a active" id="backdropLayerA"></div>
+    <div class="backdrop-layer backdrop-b" id="backdropLayerB"></div>
+    <div class="backdrop-overlay"></div>
+  </div>
+
   <!-- Living Atmospheric Background Canvas & Glow Orbs -->
   <canvas id="atmosphereCanvas" class="atmosphere-canvas" aria-hidden="true"></canvas>
   <div class="ambient-glow" id="ambientGlow"></div>
@@ -668,7 +675,7 @@
           <h3 class="auth-form-title">Welcome Back</h3>
           <p class="auth-form-sub">Sign in to access your synchronized favorites and personal weather preferences.</p>
 
-          <form id="signInForm" class="auth-form" onsubmit="return false;">
+          <form id="signInForm" class="auth-form">
             <div class="form-group">
               <label for="loginEmail" class="form-label">Email Address</label>
               <div class="input-icon-wrap">
@@ -699,6 +706,14 @@
             <button type="submit" class="auth-submit-btn" id="signInSubmitBtn">
               <span class="btn-text">Sign In</span>
             </button>
+
+            <!-- Continue as Guest Option -->
+            <div class="guest-continue-wrap">
+              <div class="auth-divider"><span>or continue without signing in</span></div>
+              <button type="button" class="guest-btn" id="guestContinueBtn" title="Explore SkyPulse without signing in">
+                <span>Continue as Guest Explorer →</span>
+              </button>
+            </div>
           </form>
 
           <div class="auth-switch-text">
@@ -712,7 +727,7 @@
           <h3 class="auth-form-title">Create Account</h3>
           <p class="auth-form-sub">Join SkyPulse to save custom weather surveillance and favorites.</p>
 
-          <form id="signUpForm" class="auth-form" onsubmit="return false;">
+          <form id="signUpForm" class="auth-form">
             <div class="form-group">
               <label for="regName" class="form-label">Full Name</label>
               <div class="input-icon-wrap">
@@ -761,6 +776,14 @@
             <button type="submit" class="auth-submit-btn" id="signUpSubmitBtn">
               <span class="btn-text">Create Account</span>
             </button>
+
+            <!-- Continue as Guest Option -->
+            <div class="guest-continue-wrap">
+              <div class="auth-divider"><span>or continue without signing in</span></div>
+              <button type="button" class="guest-btn" id="guestContinueRegBtn" title="Explore SkyPulse without signing in">
+                <span>Continue as Guest Explorer →</span>
+              </button>
+            </div>
           </form>
 
           <div class="auth-switch-text">
@@ -774,7 +797,7 @@
           <h3 class="auth-form-title">Reset Password</h3>
           <p class="auth-form-sub">Enter your email address to receive password recovery instructions.</p>
 
-          <form id="forgotForm" class="auth-form" onsubmit="return false;">
+          <form id="forgotForm" class="auth-form">
             <div class="form-group">
               <label for="forgotEmail" class="form-label">Registered Email</label>
               <div class="input-icon-wrap">

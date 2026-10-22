@@ -97,6 +97,11 @@ const WeatherAPI = (function () {
     localStorage.setItem(STORAGE_KEYS.OWM_KEY, (key || '').trim());
   }
 
+  // High-Speed In-Memory Caches for Instant Latency (<1ms)
+  const searchCache = new Map();
+  const weatherCache = new Map();
+  const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache
+
   /**
    * Resilient fetch helper that routes through local server proxy (/api/proxy)
    * to bypass corporate firewall SSL certificate inspection issues and CORS.
@@ -127,14 +132,23 @@ const WeatherAPI = (function () {
   async function searchLocations(query) {
     if (!query || query.trim().length < 2) return [];
 
+    const qKey = query.trim().toLowerCase();
+    const cached = searchCache.get(qKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+      return cached.data;
+    }
+
     const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=6&language=en&format=json`;
     
     try {
       const data = await safeFetchJson(url);
       
-      if (!data.results || data.results.length === 0) return [];
+      if (!data.results || data.results.length === 0) {
+        searchCache.set(qKey, { timestamp: Date.now(), data: [] });
+        return [];
+      }
       
-      return data.results.map(item => ({
+      const mapped = data.results.map(item => ({
         id: `${item.latitude},${item.longitude}`,
         name: item.name,
         country: item.country || '',
@@ -144,9 +158,12 @@ const WeatherAPI = (function () {
         lon: item.longitude,
         timezone: item.timezone || 'auto'
       }));
+
+      searchCache.set(qKey, { timestamp: Date.now(), data: mapped });
+      return mapped;
     } catch (err) {
       console.warn('Live geocoding unavailable, checking offline countries catalog:', err);
-      // Offline search fallback from 100 countries database if present
+      // Offline search fallback from worldwide countries database if present
       if (typeof WorldWeather !== 'undefined') {
         const q = query.toLowerCase().trim();
         const matches = WorldWeather.getAll().filter(c => 
@@ -154,7 +171,7 @@ const WeatherAPI = (function () {
           c.country.toLowerCase().includes(q)
         ).slice(0, 5);
 
-        return matches.map(c => ({
+        const mapped = matches.map(c => ({
           id: `${c.lat},${c.lon}`,
           name: c.city,
           country: c.country,
@@ -164,6 +181,7 @@ const WeatherAPI = (function () {
           lon: c.lon,
           timezone: 'auto'
         }));
+        return mapped;
       }
       return [];
     }
@@ -255,6 +273,17 @@ const WeatherAPI = (function () {
       icon = 'moon';
     }
 
+    // Determine atmospheric climate:
+    // Cold if temp <= 10°C, freezing, or snowy; Sunny if clear/sun and temp > 10°C
+    let climate = category;
+    const currentTempC = current.temperature_2m;
+    const condStr = (currentWmo.condition || '').toLowerCase();
+    if (currentTempC <= 10 || category === 'snowy' || condStr.includes('snow') || condStr.includes('freez') || condStr.includes('ice') || condStr.includes('sleet')) {
+      climate = 'cold';
+    } else if (category === 'sunny' || condStr.includes('sun') || condStr.includes('clear')) {
+      climate = isDay ? 'sunny' : 'night';
+    }
+
     // Process Next 24 Hours forecast
     const nowIso = current.time;
     let startIndex = hourly.time.findIndex(t => t >= nowIso);
@@ -319,6 +348,7 @@ const WeatherAPI = (function () {
         condition: currentWmo.condition,
         icon: icon,
         category: category,
+        climate: climate,
         isDay: isDay,
         tempMax: Math.round(daily.temperature_2m_max[0]),
         tempMin: Math.round(daily.temperature_2m_min[0]),
@@ -545,33 +575,49 @@ const WeatherAPI = (function () {
 
   /**
    * Main weather fetch function that respects provider choice & auto-falls back safely
+   * Includes high-speed in-memory caching to eliminate redundant latency
    */
   async function getWeather(lat, lon, locationInfo = {}) {
+    const latNum = Number(lat);
+    const lonNum = Number(lon);
     const provider = getProvider();
+    const cacheKey = `${latNum.toFixed(2)},${lonNum.toFixed(2)}_${provider}`;
+
+    const cached = weatherCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < CACHE_TTL_MS)) {
+      return cached.data;
+    }
+
+    let result;
     const owmKey = getOwmApiKey();
 
     if (provider === 'openweathermap' && owmKey) {
       try {
-        return await fetchFromOpenWeatherMap(lat, lon, owmKey, locationInfo);
+        result = await fetchFromOpenWeatherMap(lat, lon, owmKey, locationInfo);
       } catch (owmErr) {
         console.warn('OpenWeatherMap failed, falling back to Open-Meteo:', owmErr);
         try {
           const data = await fetchFromOpenMeteo(lat, lon, locationInfo);
           data.fallbackNotice = `OpenWeatherMap failed (${owmErr.message}). Displaying live Open-Meteo forecast.`;
-          return data;
+          result = data;
         } catch (meteoErr) {
           console.warn('Open-Meteo also unreachable, switching to local telemetry:', meteoErr);
-          return generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
+          result = generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
         }
       }
     } else {
       try {
-        return await fetchFromOpenMeteo(lat, lon, locationInfo);
+        result = await fetchFromOpenMeteo(lat, lon, locationInfo);
       } catch (err) {
         console.warn('Open-Meteo unreachable, switching to local telemetry:', err);
-        return generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
+        result = generateFallbackWeatherData(lat, lon, locationInfo, 'Network / Firewall offline. Displaying local telemetry mode.');
       }
     }
+
+    if (result && result.current) {
+      weatherCache.set(cacheKey, { timestamp: Date.now(), data: result });
+    }
+    return result;
   }
 
   // Helpers
@@ -606,3 +652,7 @@ const WeatherAPI = (function () {
     STORAGE_KEYS
   };
 })();
+
+if (typeof window !== 'undefined') window.WeatherAPI = WeatherAPI;
+if (typeof global !== 'undefined') global.WeatherAPI = WeatherAPI;
+if (typeof module !== 'undefined' && module.exports) module.exports = WeatherAPI;
