@@ -303,11 +303,53 @@ const WorldWeather = (function () {
     };
   }
 
+  /**
+   * Calculate live atmospheric condition distribution across all monitored nations
+   */
+  function getDistribution() {
+    if (!items || items.length === 0) return [];
+
+    const counts = {
+      sunny: 0,
+      cloudy: 0,
+      rainy: 0,
+      stormy: 0,
+      snowy: 0
+    };
+
+    items.forEach(c => {
+      const cond = (c.condition || '').toLowerCase();
+      const icon = (c.icon || '').toLowerCase();
+
+      if (cond.includes('storm') || cond.includes('thunder') || icon.includes('lightning')) {
+        counts.stormy++;
+      } else if (cond.includes('rain') || cond.includes('drizzle') || cond.includes('shower') || icon.includes('rain')) {
+        counts.rainy++;
+      } else if (cond.includes('snow') || cond.includes('sleet') || cond.includes('hail') || icon.includes('snow')) {
+        counts.snowy++;
+      } else if (cond.includes('cloud') || cond.includes('overcast') || cond.includes('fog') || icon.includes('cloud')) {
+        counts.cloudy++;
+      } else {
+        counts.sunny++;
+      }
+    });
+
+    const total = items.length;
+    return [
+      { key: 'sunny', label: 'Clear & Sunny', count: counts.sunny, pct: Math.round((counts.sunny / total) * 100), color: '#FBBF24' },
+      { key: 'cloudy', label: 'Cloudy / Overcast', count: counts.cloudy, pct: Math.round((counts.cloudy / total) * 100), color: '#94A3B8' },
+      { key: 'rainy', label: 'Rain & Showers', count: counts.rainy, pct: Math.round((counts.rainy / total) * 100), color: '#35D7FF' },
+      { key: 'stormy', label: 'Storms', count: counts.stormy, pct: Math.round((counts.stormy / total) * 100), color: '#7967FF' },
+      { key: 'snowy', label: 'Snow & Flurries', count: counts.snowy, pct: Math.round((counts.snowy / total) * 100), color: '#BAE6FD' }
+    ];
+  }
+
   return {
     getAll: () => items,
     fetchLiveBatch,
     filterAndSort,
     getStats,
+    getDistribution,
     getLastSync: () => lastSyncTime
   };
 })();

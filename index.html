@@ -3,30 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SkyPulse | Real-Time Weather & Forecast</title>
-  <meta name="description" content="Clean, responsive real-time weather and 7-day forecast web application.">
+  <title>SkyPulse 2.0 | The Living Atmosphere</title>
+  <meta name="description" content="Cinematic, data-driven real-time weather observatory and 100-country atmospheric intelligence platform.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet Map CSS for Global Weather Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="theme-sunny">
 
-  <!-- Background Ambient Glow & Particles -->
+  <!-- Living Atmospheric Background Canvas & Glow Orbs -->
+  <canvas id="atmosphereCanvas" class="atmosphere-canvas" aria-hidden="true"></canvas>
   <div class="ambient-glow" id="ambientGlow"></div>
   <div class="weather-effects" id="weatherEffects"></div>
 
   <div class="app-container">
     
-    <!-- Top Navigation & Controls -->
+    <!-- Top Navigation Header -->
     <header class="app-header">
       <div class="brand">
         <div class="brand-icon" id="brandIcon">
           <!-- Animated sun/cloud SVG will be injected -->
         </div>
         <div>
-          <h1 class="brand-title">SkyPulse</h1>
-          <p class="brand-subtitle">Weather & Forecast</p>
+          <div class="brand-title-wrap">
+            <h1 class="brand-title">SkyPulse</h1>
+            <span class="brand-badge">2.0</span>
+          </div>
+          <p class="brand-subtitle">The Living Atmosphere</p>
         </div>
       </div>
 
@@ -37,12 +43,12 @@
           <input 
             type="text" 
             id="searchInput" 
-            placeholder="Search city, region, or country..." 
+            placeholder="Search city, capital, or country (e.g. Tokyo, Paris, New York)..." 
             autocomplete="off"
             spellcheck="false"
           >
           <button id="clearSearchBtn" class="clear-btn hidden" aria-label="Clear search">&times;</button>
-          <button id="geoBtn" class="geo-btn" title="Use current location">
+          <button id="geoBtn" class="geo-btn" title="Detect my current location">
             <span id="geoIcon"></span>
           </button>
         </div>
@@ -53,39 +59,54 @@
         </div>
       </div>
 
-      <!-- Unit Switcher & API Settings -->
+      <!-- Header Action Controls -->
       <div class="header-actions">
         <!-- Celsius / Fahrenheit Toggle -->
         <div class="unit-toggle" id="unitToggle">
-          <button class="unit-btn active" data-unit="C">°C</button>
-          <button class="unit-btn" data-unit="F">°F</button>
+          <button class="unit-btn active" data-unit="C" aria-label="Celsius">°C</button>
+          <button class="unit-btn" data-unit="F" aria-label="Fahrenheit">°F</button>
         </div>
 
-        <!-- 100 Countries Hub Button -->
-        <button id="worldHubNavBtn" class="action-btn world-nav-btn" title="View 100 Countries Weather Report">
+        <!-- City Comparison Modal Shortcut -->
+        <button id="compareNavBtn" class="action-btn compare-nav-btn" title="Compare weather across 2-3 cities side-by-side">
+          <span id="compareNavIcon" class="btn-icon"></span>
+          <span class="btn-text">Compare</span>
+        </button>
+
+        <!-- 100 Countries Hub Shortcut -->
+        <button id="worldHubNavBtn" class="action-btn world-nav-btn" title="Explore 100 Countries Global Weather Report & Map">
           <span class="world-btn-icon">🌍</span>
           <span class="btn-text">100 Countries</span>
           <span class="badge-count">100</span>
         </button>
 
-        <!-- Settings Button -->
-        <button id="settingsBtn" class="action-btn" title="API Settings & Config">
+        <!-- API Settings Button -->
+        <button id="settingsBtn" class="action-btn" title="API Provider Settings & Configuration">
           <span id="settingsIcon"></span>
           <span class="btn-text">API Setup</span>
         </button>
       </div>
     </header>
 
-    <!-- Quick City Pills -->
+    <!-- Quick Access & Favorites Bar -->
     <div class="quick-cities-bar">
-      <span class="quick-label">Popular:</span>
-      <div class="chips-container" id="quickChips">
-        <button class="city-chip" data-city="London, UK">London</button>
-        <button class="city-chip" data-city="New York, USA">New York</button>
-        <button class="city-chip" data-city="Tokyo, Japan">Tokyo</button>
-        <button class="city-chip" data-city="Paris, France">Paris</button>
-        <button class="city-chip" data-city="Sydney, Australia">Sydney</button>
-        <button class="city-chip" data-city="Dubai, UAE">Dubai</button>
+      <div class="quick-group">
+        <span class="quick-label">⭐ Favorites:</span>
+        <div class="chips-container" id="favoritesChips">
+          <span class="empty-fav-hint">Star any city to pin here</span>
+        </div>
+      </div>
+      <div class="quick-divider"></div>
+      <div class="quick-group">
+        <span class="quick-label">Popular:</span>
+        <div class="chips-container" id="quickChips">
+          <button class="city-chip" data-city="London, UK">London</button>
+          <button class="city-chip" data-city="New York, USA">New York</button>
+          <button class="city-chip" data-city="Tokyo, Japan">Tokyo</button>
+          <button class="city-chip" data-city="Paris, France">Paris</button>
+          <button class="city-chip" data-city="Dubai, UAE">Dubai</button>
+          <button class="city-chip" data-city="Sydney, Australia">Sydney</button>
+        </div>
       </div>
     </div>
 
@@ -120,22 +141,32 @@
     <!-- Main Weather Dashboard -->
     <main class="dashboard-grid" id="mainDashboard">
       
-      <!-- Left Column / Hero Overview -->
+      <!-- Left Column / Hero Overview & Hourly Curve -->
       <section class="overview-section">
         
         <!-- Hero Weather Card -->
         <div class="card hero-card">
           <div class="hero-top">
             <div class="location-details">
-              <div class="location-pin">
-                <span id="pinIcon"></span>
+              <div class="location-title-row">
+                <span id="pinIcon" class="location-pin-icon"></span>
                 <h2 id="cityName" class="city-title">London</h2>
+                <button id="favCityBtn" class="fav-city-btn" title="Add city to favorites">
+                  <span id="favStarIcon"></span>
+                </button>
               </div>
               <p id="locationSub" class="location-sub">United Kingdom</p>
               <p id="localTime" class="local-time">Monday, Oct 12 • 14:30</p>
             </div>
-            <div class="weather-badge" id="weatherBadge">
-              <span id="badgeCondition">Partly Cloudy</span>
+            
+            <div class="hero-badges-column">
+              <div class="weather-badge" id="weatherBadge">
+                <span id="badgeCondition">Partly Cloudy</span>
+              </div>
+              <div class="mood-badge" id="weatherMoodBadge">
+                <span class="mood-dot"></span>
+                <span id="moodText">Atmospheric Mood: Calm & Clear</span>
+              </div>
             </div>
           </div>
 
@@ -164,22 +195,91 @@
               <span class="stat-label">Condition</span>
               <span class="stat-value" id="conditionText">Partly Cloudy</span>
             </div>
+            <div class="stat-divider"></div>
+            <div class="hero-stat">
+              <span class="stat-label">Updated</span>
+              <span class="stat-value" id="updateTimestamp">Just now</span>
+            </div>
           </div>
         </div>
 
-        <!-- 24-Hour Hourly Forecast -->
+        <!-- Weather Storytelling & Atmospheric Intelligence Card -->
+        <div class="card intelligence-card" id="intelligenceCard">
+          <div class="card-header">
+            <div class="intel-title-box">
+              <span class="sparkle-icon" id="sparkleIcon"></span>
+              <div>
+                <h3 class="card-title">Weather Intelligence & 24h Outlook</h3>
+                <p class="card-subtitle">Real-time analytical atmospheric brief</p>
+              </div>
+            </div>
+            <span class="intel-tag" id="intelConfidenceTag">High Precision</span>
+          </div>
+
+          <!-- Storytelling Narrative Text -->
+          <div class="story-narrative" id="storyNarrative">
+            <p id="narrativeText">Analyzing real-time forecast curve for local insights...</p>
+          </div>
+
+          <!-- 4 Contextual Intelligence Insights -->
+          <div class="intel-grid">
+            <!-- Umbrella Advisory -->
+            <div class="intel-pill" id="intelUmbrella">
+              <span class="intel-icon" id="intelUmbrellaIcon"></span>
+              <div class="intel-content">
+                <span class="intel-label">Umbrella Need</span>
+                <strong class="intel-value" id="umbrellaStatus">Not Required</strong>
+                <span class="intel-desc" id="umbrellaDesc">0% rain probability ahead</span>
+              </div>
+            </div>
+
+            <!-- Outdoor Activity Rating -->
+            <div class="intel-pill" id="intelOutdoor">
+              <span class="intel-icon" id="intelOutdoorIcon"></span>
+              <div class="intel-content">
+                <span class="intel-label">Outdoor Conditions</span>
+                <strong class="intel-value" id="outdoorStatus">Optimal</strong>
+                <span class="intel-desc" id="outdoorDesc">Mild temperature, comfortable humidity</span>
+              </div>
+            </div>
+
+            <!-- Wind Advisory -->
+            <div class="intel-pill" id="intelWind">
+              <span class="intel-icon" id="intelWindIcon"></span>
+              <div class="intel-content">
+                <span class="intel-label">Wind Dynamics</span>
+                <strong class="intel-value" id="windStatus">Gentle Breeze</strong>
+                <span class="intel-desc" id="windDesc">14 km/h from South-Southwest</span>
+              </div>
+            </div>
+
+            <!-- Temperature Trend -->
+            <div class="intel-pill" id="intelTrend">
+              <span class="intel-icon" id="intelTrendIcon"></span>
+              <div class="intel-content">
+                <span class="intel-label">Temperature Shift</span>
+                <strong class="intel-value" id="trendStatus">Stable</strong>
+                <span class="intel-desc" id="trendDesc">Expected peak at 20°C near 15:00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 24-Hour Hourly Forecast Slider & Canvas Curve -->
         <div class="card hourly-card">
           <div class="card-header">
             <div>
               <h3 class="card-title">Hourly Forecast</h3>
-              <p class="card-subtitle">Next 24 hours</p>
+              <p class="card-subtitle">Next 24 hours atmospheric progression</p>
             </div>
-            <button id="toggleGraphBtn" class="text-toggle-btn">View Curve</button>
+            <div class="forecast-toggle-wrap">
+              <button id="toggleGraphBtn" class="text-toggle-btn">View Curve</button>
+            </div>
           </div>
 
-          <!-- Canvas / SVG Temperature Curve (Toggleable) -->
+          <!-- Canvas Temperature Curve (Smooth Bezier Spline) -->
           <div class="hourly-graph-container hidden" id="hourlyGraphContainer">
-            <canvas id="tempChart" height="110"></canvas>
+            <canvas id="tempChart" height="120"></canvas>
           </div>
 
           <!-- Horizontal Hourly Cards Slider -->
@@ -190,13 +290,13 @@
 
       </section>
 
-      <!-- Right Column / Metrics & 7-Day Forecast -->
+      <!-- Right Column / Detailed Metrics & 7-Day Forecast -->
       <section class="details-section">
 
         <!-- Weather Metrics Grid -->
         <div class="metrics-grid">
           
-          <!-- Wind -->
+          <!-- Wind Speed & Direction -->
           <div class="metric-card">
             <div class="metric-top">
               <span class="metric-icon" id="windIcon"></span>
@@ -206,7 +306,10 @@
               <span class="metric-main" id="windSpeed">15</span>
               <span class="metric-unit" id="windUnit">km/h</span>
             </div>
-            <div class="metric-sub" id="windDirection">Direction: 210° (SSW)</div>
+            <div class="compass-bar">
+              <span class="compass-needle" id="compassNeedle"></span>
+              <span class="metric-sub" id="windDirection">Direction: 210° (SSW)</span>
+            </div>
           </div>
 
           <!-- Humidity -->
@@ -238,7 +341,7 @@
             <div class="metric-sub" id="uvAdvice">Safe for sun exposure</div>
           </div>
 
-          <!-- Air Pressure -->
+          <!-- Atmospheric Pressure -->
           <div class="metric-card">
             <div class="metric-top">
               <span class="metric-icon" id="pressureIcon"></span>
@@ -248,7 +351,7 @@
               <span class="metric-main" id="pressure">1014</span>
               <span class="metric-unit">hPa</span>
             </div>
-            <div class="metric-sub">Standard atmospheric pressure</div>
+            <div class="metric-sub" id="pressureTrend">Standard atmospheric pressure</div>
           </div>
 
           <!-- Visibility -->
@@ -261,10 +364,10 @@
               <span class="metric-main" id="visibility">10</span>
               <span class="metric-unit" id="visUnit">km</span>
             </div>
-            <div class="metric-sub">Clear view distance</div>
+            <div class="metric-sub" id="visStatus">Crystal clear optical view</div>
           </div>
 
-          <!-- Sunrise & Sunset -->
+          <!-- Sunrise & Sunset Schedule -->
           <div class="metric-card sun-times-card">
             <div class="metric-top">
               <span class="metric-icon" id="sunCycleIcon"></span>
@@ -284,12 +387,12 @@
 
         </div>
 
-        <!-- 7-Day Forecast Card -->
+        <!-- 7-Day Forecast Card with Expandable Days & Range Bars -->
         <div class="card daily-card">
           <div class="card-header">
             <div>
-              <h3 class="card-title">7-Day Forecast</h3>
-              <p class="card-subtitle">Expected weather ahead</p>
+              <h3 class="card-title">7-Day Extended Forecast</h3>
+              <p class="card-subtitle">Click any day to expand detailed hourly curve</p>
             </div>
             <span class="provider-pill" id="forecastProviderPill">Open-Meteo</span>
           </div>
@@ -303,115 +406,195 @@
 
     </main>
  
-     <!-- 100 Countries Global Weather Section -->
-     <section class="world-section" id="worldSection">
-       <div class="world-header-row">
-         <div class="world-title-box">
-           <div class="world-title-with-badge">
-             <h2 class="world-title">🌍 100 Countries Global Weather Report</h2>
-             <span class="live-pill" id="worldLivePill">100 Nations Live</span>
-           </div>
-           <p class="world-subtitle">
-             Real-time atmospheric conditions across 100 countries worldwide. Click any country card to explore its full 24-hour timeline and 7-day extended forecast.
-           </p>
-         </div>
-         <div class="world-actions">
-           <button id="refreshWorldBtn" class="refresh-world-btn" title="Refresh live weather for all 100 countries">
-             <span class="refresh-icon" id="worldRefreshIcon">🔄</span>
-             <span class="btn-text">Sync Live 100</span>
-           </button>
-         </div>
-       </div>
+    <!-- 100 Countries Global Weather Section (The Intelligence Center) -->
+    <section class="world-section" id="worldSection">
+      <div class="world-header-row">
+        <div class="world-title-box">
+          <div class="world-title-with-badge">
+            <h2 class="world-title">🌍 Global Weather Intelligence Center</h2>
+            <span class="live-pill" id="worldLivePill">100 Nations Live</span>
+          </div>
+          <p class="world-subtitle">
+            Real-time planetary atmospheric surveillance covering 100 sovereign nations. Compare temperatures, inspect condition distributions, or switch to the interactive world map.
+          </p>
+        </div>
+        <div class="world-actions">
+          <!-- View Mode Toggle: Grid vs Map -->
+          <div class="view-mode-toggle">
+            <button id="viewGridBtn" class="mode-btn active" title="Cards Grid View">
+              <span id="gridIcon"></span>
+              <span>Grid View</span>
+            </button>
+            <button id="viewMapBtn" class="mode-btn" title="Interactive World Map View">
+              <span id="mapIcon"></span>
+              <span>World Map</span>
+            </button>
+          </div>
 
-       <!-- Global Telemetry Stats Cards -->
-       <div class="world-stats-grid" id="worldStatsGrid">
-         <div class="world-stat-card">
-           <span class="stat-icon">🔥</span>
-           <div>
-             <span class="stat-meta">Warmest Country</span>
-             <strong class="stat-hero" id="statWarmest">--</strong>
-           </div>
-         </div>
-         <div class="world-stat-card">
-           <span class="stat-icon">❄️</span>
-           <div>
-             <span class="stat-meta">Coldest Country</span>
-             <strong class="stat-hero" id="statColdest">--</strong>
-           </div>
-         </div>
-         <div class="world-stat-card">
-           <span class="stat-icon">🌐</span>
-           <div>
-             <span class="stat-meta">Global Average Temp</span>
-             <strong class="stat-hero" id="statAverage">--</strong>
-           </div>
-         </div>
-         <div class="world-stat-card">
-           <span class="stat-icon">📊</span>
-           <div>
-             <span class="stat-meta">Countries Monitored</span>
-             <strong class="stat-hero" id="statCount">100 / 100</strong>
-           </div>
-         </div>
-       </div>
+          <button id="refreshWorldBtn" class="refresh-world-btn" title="Refresh live weather for all 100 countries">
+            <span class="refresh-icon" id="worldRefreshIcon">🔄</span>
+            <span class="btn-text">Sync Live 100</span>
+          </button>
+        </div>
+      </div>
 
-       <!-- Controls & Filter Toolbar -->
-       <div class="world-toolbar">
-         <!-- Search Filter -->
-         <div class="world-search-box">
-           <span class="world-search-icon">🔍</span>
-           <input 
-             type="text" 
-             id="worldSearchInput" 
-             placeholder="Search 100 countries or capitals (e.g. India, Japan, France, Brazil, USA)..."
-             autocomplete="off"
-             spellcheck="false"
-           >
-           <button id="clearWorldSearchBtn" class="clear-btn hidden" aria-label="Clear filter">&times;</button>
-         </div>
+      <!-- Real Calculated Global Statistics Grid -->
+      <div class="world-stats-grid" id="worldStatsGrid">
+        <div class="world-stat-card">
+          <span class="stat-icon">🔥</span>
+          <div>
+            <span class="stat-meta">Warmest Country</span>
+            <strong class="stat-hero" id="statWarmest">--</strong>
+          </div>
+        </div>
+        <div class="world-stat-card">
+          <span class="stat-icon">❄️</span>
+          <div>
+            <span class="stat-meta">Coldest Country</span>
+            <strong class="stat-hero" id="statColdest">--</strong>
+          </div>
+        </div>
+        <div class="world-stat-card">
+          <span class="stat-icon">🌐</span>
+          <div>
+            <span class="stat-meta">Global Average Temp</span>
+            <strong class="stat-hero" id="statAverage">--</strong>
+          </div>
+        </div>
+        <div class="world-stat-card">
+          <span class="stat-icon">📊</span>
+          <div>
+            <span class="stat-meta">Countries Monitored</span>
+            <strong class="stat-hero" id="statCount">100 / 100</strong>
+          </div>
+        </div>
+      </div>
 
-         <!-- Region Filter Pills -->
-         <div class="world-region-chips" id="worldRegionChips">
-           <button class="region-chip active" data-region="All">All (100)</button>
-           <button class="region-chip" data-region="Europe">Europe (26)</button>
-           <button class="region-chip" data-region="Asia">Asia (26)</button>
-           <button class="region-chip" data-region="Americas">Americas (22)</button>
-           <button class="region-chip" data-region="Africa">Africa (20)</button>
-           <button class="region-chip" data-region="Oceania">Oceania (6)</button>
-         </div>
+      <!-- Live Weather Condition Distribution Segmented Bar -->
+      <div class="world-distribution-box" id="worldDistributionBox">
+        <div class="dist-header">
+          <span class="dist-title">Global Atmospheric Distribution (Live Telemetry)</span>
+          <span class="dist-note" id="distCoverageNote">Calculated across 100 monitored sovereign nations</span>
+        </div>
+        <div class="dist-bar-track" id="distBarTrack">
+          <!-- Dynamic distribution segments injected via JS -->
+        </div>
+        <div class="dist-legend" id="distLegend">
+          <!-- Segment items injected via JS -->
+        </div>
+      </div>
 
-         <!-- Sort Options -->
-         <div class="world-sort-box">
-           <label for="worldSortSelect" class="sort-label">Sort:</label>
-           <select id="worldSortSelect" class="world-select">
-             <option value="name-asc">Country Name (A → Z)</option>
-             <option value="name-desc">Country Name (Z → A)</option>
-             <option value="temp-desc">Warmest First</option>
-             <option value="temp-asc">Coldest First</option>
-           </select>
-         </div>
-       </div>
+      <!-- Controls & Filter Toolbar -->
+      <div class="world-toolbar">
+        <!-- Search Filter -->
+        <div class="world-search-box">
+          <span class="world-search-icon">🔍</span>
+          <input 
+            type="text" 
+            id="worldSearchInput" 
+            placeholder="Search 100 countries or capitals (e.g. India, Japan, France, Brazil, USA, Rome)..."
+            autocomplete="off"
+            spellcheck="false"
+          >
+          <button id="clearWorldSearchBtn" class="clear-btn hidden" aria-label="Clear filter">&times;</button>
+        </div>
 
-       <!-- 100 Countries Cards Grid -->
-       <div class="world-grid" id="worldGrid">
-         <!-- Populated dynamically via JavaScript -->
-       </div>
+        <!-- Region Filter Pills -->
+        <div class="world-region-chips" id="worldRegionChips">
+          <button class="region-chip active" data-region="All">All (100)</button>
+          <button class="region-chip" data-region="Europe">Europe (26)</button>
+          <button class="region-chip" data-region="Asia">Asia (26)</button>
+          <button class="region-chip" data-region="Americas">Americas (22)</button>
+          <button class="region-chip" data-region="Africa">Africa (20)</button>
+          <button class="region-chip" data-region="Oceania">Oceania (6)</button>
+        </div>
 
-       <!-- Empty Search Result -->
-       <div class="world-empty hidden" id="worldEmptyState">
-         <span class="empty-icon">🔍</span>
-         <h3>No countries match your search</h3>
-         <p>Try searching for a different country name or select "All" continents.</p>
-         <button id="resetWorldFiltersBtn" class="secondary-btn">Reset Filters</button>
-       </div>
-     </section>
+        <!-- Sort Options -->
+        <div class="world-sort-box">
+          <label for="worldSortSelect" class="sort-label">Sort:</label>
+          <select id="worldSortSelect" class="world-select">
+            <option value="name-asc">Country Name (A → Z)</option>
+            <option value="name-desc">Country Name (Z → A)</option>
+            <option value="temp-desc">Warmest First</option>
+            <option value="temp-asc">Coldest First</option>
+            <option value="wind-desc">Highest Wind</option>
+            <option value="humidity-desc">Highest Humidity</option>
+          </select>
+        </div>
+      </div>
 
-     <!-- App Footer -->
-     <footer class="app-footer">
-      <p>SkyPulse Weather Dashboard • Built for seamless cross-platform weather exploration.</p>
-      <p class="footer-sub">Supports both Open-Meteo (Zero Key Global API) and OpenWeatherMap.</p>
+      <!-- Interactive Leaflet World Weather Map View (Toggleable) -->
+      <div class="world-map-wrapper hidden" id="worldMapWrapper">
+        <div id="worldWeatherMap" class="world-weather-map"></div>
+        <div class="map-overlay-hint">
+          <span>Click any marker to preview weather or focus in the hero dashboard.</span>
+        </div>
+      </div>
+
+      <!-- 100 Countries Cards Grid View -->
+      <div class="world-grid" id="worldGrid">
+        <!-- Populated dynamically via JavaScript -->
+      </div>
+
+      <!-- Empty Search Result -->
+      <div class="world-empty hidden" id="worldEmptyState">
+        <span class="empty-icon">🔍</span>
+        <h3>No countries match your search</h3>
+        <p>Try searching for a different country name or select "All" continents.</p>
+        <button id="resetWorldFiltersBtn" class="secondary-btn">Reset Filters</button>
+      </div>
+    </section>
+
+    <!-- App Footer -->
+    <footer class="app-footer">
+      <div class="footer-brand">
+        <strong>SkyPulse 2.0</strong> — The Living Atmosphere
+      </div>
+      <p>Precision meteorological intelligence platform powered by Open-Meteo & OpenWeatherMap.</p>
+      <p class="footer-sub">Designed with Apple clarity, cinematic atmospheric depth, and full responsive glassmorphism.</p>
     </footer>
 
+  </div>
+
+  <!-- City Comparison Modal -->
+  <div class="modal-backdrop hidden" id="compareModal">
+    <div class="modal-card compare-modal-card">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <span class="modal-icon" id="compareModalIcon"></span>
+          <div>
+            <h3 class="modal-title">Atmospheric Comparison Matrix</h3>
+            <p class="modal-desc-sub">Compare weather metrics between 2 to 3 cities side-by-side</p>
+          </div>
+        </div>
+        <button id="closeCompareBtn" class="modal-close-btn">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- City Selectors Row -->
+        <div class="compare-selectors-row">
+          <div class="compare-selector-box">
+            <label class="compare-label">City 1 (Active):</label>
+            <select id="compareSelect1" class="world-select compare-dropdown"></select>
+          </div>
+          <div class="compare-selector-box">
+            <label class="compare-label">City 2:</label>
+            <select id="compareSelect2" class="world-select compare-dropdown"></select>
+          </div>
+          <div class="compare-selector-box">
+            <label class="compare-label">City 3 (Optional):</label>
+            <select id="compareSelect3" class="world-select compare-dropdown">
+              <option value="">-- None --</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Comparison Table Container -->
+        <div class="compare-table-container" id="compareTableContainer">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- API Settings Modal -->
@@ -478,6 +661,7 @@
   </div>
 
   <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script src="js/icons.js"></script>
   <script src="js/api.js"></script>
   <script src="js/countries.js"></script>

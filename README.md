@@ -1,108 +1,101 @@
-# SkyPulse Weather App 🌦️
+# SkyPulse 2.0 — The Living Atmosphere 🌦️✨
 
-A modern, responsive, and feature-rich weather dashboard application built with vanilla HTML5, CSS3, and modern JavaScript. SkyPulse provides real-time current conditions, a 24-hour hourly forecast timeline, and a 7-day extended forecast with dynamic adaptive glassmorphism styling.
+A cinematic, data-driven, world-class weather observatory and 100-country atmospheric intelligence platform built with semantic HTML5, modern CSS3, and JavaScript.
 
 ![SkyPulse Weather Dashboard](assets/preview.png)
 
 ---
 
+## 🌟 Visual Identity: The Atmospheric Aurora System
+
+SkyPulse 2.0 embodies the **Atmospheric Aurora** design system:
+- **Deep Midnight Navy:** `#070B16`
+- **Atmospheric Blue:** `#0D1B2A`
+- **Electric Cyan:** `#35D7FF`
+- **Aurora Violet:** `#7967FF`
+- **Soft Cloud White:** `#F4F7FF`
+- **Muted Blue-Gray:** `#8E9EB5`
+
+Featuring restrained glassmorphism, glowing translucent cards, ambient aurora mesh gradients, and condition-responsive atmospheric particles.
+
+---
+
 ## 🚀 Key Features
 
-### 1. API Connectivity & Architecture
-- **Dual Weather API Integration:**
-  - **Open-Meteo Global Weather API (Default):** High-precision real-time meteorological data with zero API key configuration needed. Works instantly worldwide out of the box.
-  - **OpenWeatherMap (OWM 2.5 API):** Fully supported for official OpenWeatherMap telemetry. Users can enter their personal API key in the in-app **API Setup** modal.
-- **Fail-Safe Fallback:** If an OpenWeatherMap API key fails or hits rate limits, the app automatically switches to live Open-Meteo data so the interface never crashes or displays blank cards.
-- **Unified Data Normalizer:** All API responses are transformed into a clean, normalized schema for maintainability and modularity.
+### 1. 🌌 Living Atmospheric Simulator (Canvas Engine)
+- Condition-aware particle canvas rendering ambient solar motes for sunny skies, angled precipitation streaks for rain, electric discharges for thunderstorms, drifting crystalline snowflakes for snow, and twinkling starfields for nocturnal atmospheres.
+- Optimized 60 FPS performance with accessibility respect for reduced motion.
 
-### 2. Current Atmospheric Overview
-- **Hero Card:** City name, administrative region, country, and local timestamp.
-- **Temperature Display:** Current temperature with instant **°C / °F** unit toggle.
-- **Detailed Stats:** Feels-like temperature, daily high/low temperatures, and animated condition badges.
-- **Vector SVG Icons:** Crisp, scalable SVG weather graphics that render offline without third-party image latency.
+### 2. ⚡ Cinematic Weather Centerpiece
+- **Oversized Typography:** High-impact temperature centerpiece with subtle cyan drop shadow.
+- **Weather Mood Indicator:** Atmospheric mood badges summarizing real conditions (e.g. *Crisp & Radiant*, *Storm Alert Active*, *Nocturnal Starlit Serenity*).
+- **One-Click Favorites:** Star button on the hero to save any city to browser `localStorage` and access via quick header pills.
+- **High / Low & Feels-Like:** Real-time metrics updated instantly when switching between **°C / °F**.
 
-### 3. Comprehensive Atmospheric Metrics
-- **Wind Speed & Direction:** Speed in km/h or mph with compass cardinal directions (e.g. `SSE 13 km/h`).
-- **Humidity:** Percentage indicator with a visual gradient progress bar and comfort status.
-- **UV Index:** Solar radiation level with safety tags (`Low`, `Moderate`, `High`, `Very High`) and exposure guidelines.
-- **Air Pressure:** Real-time atmospheric pressure in hPa.
-- **Visibility:** Visual distance in kilometers or miles.
-- **Sun Schedule:** Sunrise and sunset times.
+### 3. 🧠 Weather Intelligence & 24h Storytelling Hub
+- **Analytical Brief:** Generates concise human narratives from real 24-hour forecast data (peak temperatures, evening cooldown, precipitation windows).
+- **Contextual Intelligence Cards:**
+  - ☂️ **Umbrella Advisory:** Probability-based guidance for the upcoming 12 hours.
+  - 🏃 **Outdoor Activity Rating:** Evaluates temperature, wind, and rain for running or cycling.
+  - 💨 **Wind Dynamics:** Beaufort scale classification, cardinal compass bearing, and speed.
+  - 🌡️ **Temperature Trajectory:** 24-hour warming or cooling trend predictions.
 
-### 4. Forecast Capabilities
-- **24-Hour Hourly Forecast:** Horizontal scrollable card slider showing upcoming hourly temperatures, conditions, and precipitation probabilities (`%`).
-- **Interactive Temperature Curve:** Toggleable canvas graph rendering a smooth quadratic Bezier temperature curve across the day.
-- **7-Day Extended Forecast:** Daily breakdown showing day name, weather icon, condition description, and high/low temperature bounds.
+### 4. 📈 24-Hour Timeline & Spline Curve
+- Horizontally scrollable 24-hour cards with precipitation probability (`%`) and current hour highlight.
+- Interactive high-DPI canvas graph rendering smooth Bezier spline temperature curves with dual cyan-to-violet gradient fills.
 
-### 5. Search & Geolocation
-- **Live Autocomplete Search:** Instant city suggestions with administrative region and country codes as you type.
-- **Quick City Pills:** One-click shortcuts for popular global hubs (London, New York, Tokyo, Paris, Sydney, Dubai).
-- **HTML5 Geolocation:** "Locate Me" button to retrieve local atmospheric data for the user's current GPS coordinates.
-- **Persistence:** Remembers the last viewed location and selected temperature unit (`°C` / `°F`) using `localStorage`.
+### 5. 📅 7-Day Extended Forecast with Range Bars & Expandable Drawers
+- **Temperature Range Bars:** Visual indicator displaying daily min-to-max temperature range relative to the entire week's scale.
+- **Expandable Day Accordion:** Click any day to reveal morning, afternoon, evening, and night breakdowns with precipitation and UV index.
 
-### 6. 100 Countries Global Weather Hub 🌍
-- **Curated 100 Nations Dataset:** Comprehensive coverage spanning Europe (26), Asia (26), Americas (22), Africa (20), and Oceania (6).
-- **Global Overview Stats:** Real-time summary widgets showcasing the Warmest Country, Coldest Country, Global Average Temperature, and Monitored Nations count.
-- **Instant Search & Continent Filtering:** Filter countries dynamically by name, capital city, or continent pills (`All`, `Europe`, `Asia`, `Americas`, `Africa`, `Oceania`).
-- **Sorting Options:** Sort alphabetically (A-Z, Z-A) or by temperature (Warmest First, Coldest First).
-- **Interactive Deep-Dive:** Clicking any of the 100 country cards instantly loads its complete 24-hour hourly curve and 7-day forecast into the main dashboard.
-- **Batch Live Fetching & Caching:** Batched coordinates query to Open-Meteo with localStorage caching for instant startup.
+### 6. 🌍 100-Country Global Atmospheric Intelligence Center
+- **Planetary Telemetry:** Real calculated metrics across 100 sovereign nations (warmest nation, coldest nation, dynamically computed global average temperature).
+- **Segmented Distribution Bar:** Real-time breakdown of monitored nations currently Sunny, Cloudy, Rainy, Stormy, or Snowy.
+- **Interactive World Weather Map:** Integrated with Leaflet and CartoDB Dark Matter tiles, rendering interactive temperature pins for 100 world capitals. Clicking any marker reveals telemetry and focuses that location into the main hero view!
+- **Filter & Sort Toolbar:** Real-time search by country or capital, continent filtering (Europe, Asia, Americas, Africa, Oceania), and multi-criteria sorting.
 
-### 7. Responsive UI & Dynamic Themes
-- **Adaptive Ambient Themes:** Background colors and glows dynamically adjust to the current weather condition (`sunny`, `cloudy`, `rainy`, `stormy`, `snowy`, `night`).
-- **Glassmorphism Design:** Modern translucent cards, backdrop filters, and typography.
-- **Fully Responsive:** Adapts from mobile phone screens to tablets and wide desktop monitors.
+### 7. ⚖️ City Comparison Matrix
+- Compare 2 to 3 cities side-by-side in an interactive modal table covering temperature, condition, humidity, wind velocity, and coordinates.
+
+### 8. 🛡️ Dual API Architecture & Firewall Resiliency
+- **Open-Meteo Global API (Default):** Zero-key, 100% free, high precision.
+- **OpenWeatherMap (OWM 2.5):** User API key support with graceful fail-safe fallback.
+- **Local Proxy Endpoint (`/api/proxy`):** Bypasses strict campus/corporate firewall SSL inspection and CORS issues via Node.js agent.
 
 ---
 
-## 📁 Project Structure
+## 🛠️ Quick Start
 
-```text
-weather-app/
-├── index.html          # Semantic HTML5 markup, dashboard & 100 Countries Hub
-├── start.bat           # One-click Windows desktop server launcher
-├── server.js           # Lightweight zero-dependency HTTP server
-├── css/
-│   └── style.css       # Glassmorphism design, responsive grid, 100-country cards & themes
-├── js/
-│   ├── api.js          # Open-Meteo & OpenWeatherMap API normalization service
-│   ├── countries.js    # 100 Countries global dataset, batch fetcher, filters & stats
-│   ├── icons.js        # High-definition standalone SVG weather icons library
-│   └── app.js          # App controller, state management, search, and chart
-├── assets/
-│   └── preview.png     # Application preview screenshot
-└── README.md           # Documentation and setup guide
-```
-
----
-
-## 🛠️ How to Run
-
-No heavy build steps or package installations are required!
-
-### Option 1: Direct Browser Launch
-1. Double-click `index.html` or drag it into any modern web browser (Google Chrome, Microsoft Edge, Mozilla Firefox, Safari).
-2. The app will immediately load live weather data for London.
-
-### Option 2: Local HTTP Server (Recommended)
-You can serve the directory using any lightweight web server:
-
+### 1. Launch Server
+Double-click `start.bat` on Windows, or run:
 ```bash
-# Using Node.js (npx serve)
-npx serve .
-
-# Or using Python 3
-python -m http.server 3000
+node server.js
 ```
-Then visit `http://localhost:3000` in your browser.
+
+### 2. Open Application
+Navigate to [**http://localhost:3000**](http://localhost:3000) in any modern browser.
 
 ---
 
-## ⚙️ Configuring OpenWeatherMap (Optional)
+## 📂 Project Architecture
 
-1. Click the **API Setup** button in the top navigation bar.
-2. Select **OpenWeatherMap (2.5 API)**.
-3. Paste your OpenWeatherMap API Key and click **Save Key**.
-4. Click **Apply & Refresh**.
+```
+weather-app/
+├── assets/
+│   └── preview.png          # UI preview banner
+├── css/
+│   └── style.css            # Atmospheric Aurora design system
+├── js/
+│   ├── api.js               # API service & normalization
+│   ├── app.js               # Main application controller
+│   ├── countries.js         # 100-country dataset & telemetry stats
+│   └── icons.js             # SVG vector icon & dynamic loader library
+├── index.html               # Semantic HTML5 layout
+├── package.json             # Project metadata
+├── server.js                # Node proxy server
+└── start.bat                # Windows desktop launcher
+```
 
-If you do not have an API key, the default **Open-Meteo Global API** provides full real-time global weather and forecasts without registration or keys.
+---
+
+*SkyPulse 2.0 • The Living Atmosphere*
